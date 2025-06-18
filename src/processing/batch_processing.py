@@ -126,7 +126,8 @@ def process_vector_file(input_path, output_dir, selected_api_key: str, ghostscri
         use_png_prompt=True,  # Gunakan prompt PNG untuk semua file vektor
         selected_model_input=selected_model,
         keyword_count=keyword_count,
-        priority=priority
+        priority=priority,
+        is_vector_conversion=True  # Flag untuk menggunakan LITE prompt
     )
     
     # Bersihkan file sementara
@@ -692,7 +693,17 @@ def batch_process_files(input_dir, output_dir, api_keys, ghostscript_path, renam
                             else: 
                                 failed_count += 1
                                 if status == "failed_api":
-                                     log_message(f"✗ {filename} (API Error/Limit)", "error")
+                                    # Check if it's actually from metadata result having error details
+                                    error_detail = result.get('metadata', {}).get('error', 'Unknown API error') if isinstance(result.get('metadata'), dict) else 'Unknown API error'
+                                    if '429' in str(error_detail) or 'rate limit' in str(error_detail).lower():
+                                        log_message(f"✗ {filename} (Rate Limit - 429)", "error")
+                                    elif '400' in str(error_detail):
+                                        log_message(f"✗ {filename} (Bad Request - 400, possibly corrupt conversion)", "error")  
+                                    elif '401' in str(error_detail) or '403' in str(error_detail):
+                                        log_message(f"✗ {filename} (Auth Error - {error_detail})", "error")
+                                    else:
+                                        log_message(f"✗ {filename} (API Error: {error_detail})", "error")
+                                    failed_count += 1
                                 elif status == "failed_copy":
                                      log_message(f"✗ {filename} (gagal copy)", "error")
                                 elif status == "failed_format":

@@ -141,7 +141,19 @@ def convert_eps_to_jpg(eps_path, output_jpg_path, ghostscript_path, stop_event=N
         if return_code == 0:
             # Periksa apakah file output ada dan tidak kosong
             if os.path.exists(output_jpg_path) and os.path.getsize(output_jpg_path) > 100: # Cek ukuran > 100 bytes (arbitrary small size)
-                log_message(f"  ✓ Konversi EPS/AI ke JPG berhasil: {os.path.basename(output_jpg_path)}")
+                # DEBUG: Validasi JPEG file integrity
+                try:
+                    from PIL import Image
+                    with Image.open(output_jpg_path) as img:
+                        img.verify()  # Verify that this is actually a valid image
+                    log_message(f"  ✓ Konversi EPS/AI ke JPG berhasil dan file valid: {os.path.basename(output_jpg_path)}")
+                except Exception as img_err:
+                    log_message(f"  ✗ JPEG hasil konversi corrupt atau tidak valid: {img_err}")
+                    if os.path.exists(output_jpg_path):
+                        try: os.remove(output_jpg_path)
+                        except Exception: pass
+                    return False, f"Ghostscript berhasil tapi hasil JPEG corrupt: {img_err}"
+                
                 success = True
                 final_error_message = None # Berhasil, tidak ada error
             else:

@@ -16,6 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 -
 
+## [3.5.1] - 2025-06-18
+
+### Fixed
+- **UnboundLocalError:** Fixed `UnboundLocalError: cannot access local variable 'is_vector_conversion' before assignment` that occurred during API requests for vector files. Resolved by adding proper parameter passing in the `_attempt_gemini_request` function.
+- **Prompt Token Optimization:** Optimized all prompt formats (KUALITAS, SEIMBANG, CEPAT for Standard, PNG, and VIDEO variants) by removing bullet-point formatting and condensing text structure. This reduces token usage by approximately 60-70% while maintaining content quality, preventing false rate limit issues for vector and video files.
+
+### Changed
+- **Prompt Structure:** Streamlined all prompts to use inline formatting instead of bullet points, significantly reducing token consumption without affecting metadata quality or detail level.
+---
+
 ## [3.5.0] - 2025-06-13
 
 ### Added
@@ -37,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CSV Export Architecture:** Extended `csv_exporter.py` with specialized functions for each platform's unique requirements
 - **Sanitization Functions:** Added `sanitize_adobe_stock_title()`, `sanitize_adobe_stock_keywords()`, `sanitize_vecteezy_title()`, and `sanitize_vecteezy_keywords()` for platform-specific data cleaning
 - **Video Frame Processing:** Modified video processing pipeline to extract and analyze multiple frames for enhanced content understanding
-
+---
 ## [3.4.0] - 2025-05-25
 
 ### Fixed

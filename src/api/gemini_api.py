@@ -164,7 +164,8 @@ def _attempt_gemini_request(
     use_png_prompt: bool,
     use_video_prompt: bool,
     priority: str,
-    image_basename: str
+    image_basename: str,
+    is_vector_conversion: bool = False
 ) -> tuple:
 
     if check_stop_event(stop_event, f"API request dibatalkan sebelum cooldown model: {image_basename}"):
@@ -183,6 +184,10 @@ def _attempt_gemini_request(
     else:
         log_message(f"Mengirim {len(image_paths)} frame dari {image_basename} ke model {model_to_use} (API Key: ...{current_api_key[-5:]})", "info")
 
+    # Check for converted files in the filename if not explicitly marked as vector conversion
+    final_is_vector_conversion = is_vector_conversion or "converted" in image_basename.lower()
+    is_video_processing = isinstance(image_paths, list) and len(image_paths) > 1
+    
     selected_prompt_text = PROMPT_TEXT
     if priority == "Cepat":
         if use_video_prompt: selected_prompt_text = PROMPT_TEXT_VIDEO_FAST
@@ -192,22 +197,47 @@ def _attempt_gemini_request(
         if use_video_prompt: selected_prompt_text = PROMPT_TEXT_VIDEO_BALANCED
         elif use_png_prompt: selected_prompt_text = PROMPT_TEXT_PNG_BALANCED
         else: selected_prompt_text = PROMPT_TEXT_BALANCED
-    else:
+    else: # Kualitas
         if use_video_prompt: selected_prompt_text = PROMPT_TEXT_VIDEO
         elif use_png_prompt: selected_prompt_text = PROMPT_TEXT_PNG
+        else: selected_prompt_text = PROMPT_TEXT
+    
+    # DEBUG: Log which prompt is being used
+    prompt_name = "UNKNOWN"
+    if selected_prompt_text == PROMPT_TEXT: prompt_name = "PROMPT_TEXT (Kualitas)"
+    elif selected_prompt_text == PROMPT_TEXT_PNG: prompt_name = "PROMPT_TEXT_PNG (Kualitas)"
+    elif selected_prompt_text == PROMPT_TEXT_VIDEO: prompt_name = "PROMPT_TEXT_VIDEO (Kualitas)"
+    elif selected_prompt_text == PROMPT_TEXT_BALANCED: prompt_name = "PROMPT_TEXT_BALANCED (Seimbang)"
+    elif selected_prompt_text == PROMPT_TEXT_PNG_BALANCED: prompt_name = "PROMPT_TEXT_PNG_BALANCED (Seimbang)"
+    elif selected_prompt_text == PROMPT_TEXT_VIDEO_BALANCED: prompt_name = "PROMPT_TEXT_VIDEO_BALANCED (Seimbang)"
+    elif selected_prompt_text == PROMPT_TEXT_FAST: prompt_name = "PROMPT_TEXT_FAST (Cepat)"
+    elif selected_prompt_text == PROMPT_TEXT_PNG_FAST: prompt_name = "PROMPT_TEXT_PNG_FAST (Cepat)"
+    elif selected_prompt_text == PROMPT_TEXT_VIDEO_FAST: prompt_name = "PROMPT_TEXT_VIDEO_FAST (Cepat)"
+    
+    log_message(f"  DEBUG: Using prompt: {prompt_name} for {image_basename}", "info")
 
     parts = [{"text": selected_prompt_text}]
     
     for img_path in image_paths:
         try:
+            # DEBUG: Log file details
+            file_size = os.path.getsize(img_path)
+            log_message(f"  DEBUG: Membaca file {os.path.basename(img_path)} (ukuran: {file_size} bytes)", "info")
+            
             with open(img_path, "rb") as image_file:
                 image_data = base64.b64encode(image_file.read()).decode("utf-8")
+            
+            # DEBUG: Log base64 length
+            log_message(f"  DEBUG: Base64 length: {len(image_data)} chars", "info")
             
             _, ext = os.path.splitext(img_path)
             mime_type = f"image/{ext.lower().replace('.', '')}"
             if mime_type == "image/jpg": mime_type = "image/jpeg"
             if mime_type not in ["image/png", "image/jpeg", "image/webp", "image/heic", "image/heif"]:
                 mime_type = "image/jpeg"
+            
+            # DEBUG: Log MIME type
+            log_message(f"  DEBUG: MIME type: {mime_type} untuk {os.path.basename(img_path)}", "info")
                 
             parts.append({"inline_data": {"mime_type": mime_type, "data": image_data}})
             
@@ -292,6 +322,10 @@ def _attempt_gemini_request(
         error_details = response_data.get("error", {})
         api_error_code = error_details.get("code", "UNKNOWN_API_ERR_CODE")
         api_error_message = error_details.get("message", "No specific error message from API.")
+        
+        # DEBUG: Log full error response for troubleshooting
+        log_message(f"  DEBUG: Full API Error Response: {str(response_data)[:1000]}{'...' if len(str(response_data)) > 1000 else ''}", "error")
+        
         log_message(f"  API Error [{model_to_use}] untuk {image_basename}: HTTP {http_status_code}, Code API: {api_error_code} - {api_error_message}", "error")
         return http_status_code, response_data, "api_error", api_error_message
 
@@ -335,7 +369,7 @@ def _extract_metadata_from_text(generated_text: str, keyword_count: str) -> dict
         "ss_category": ss_category
     }
 
-def get_gemini_metadata(image_path, api_key, stop_event, use_png_prompt=False, use_video_prompt=False, selected_model_input=None, keyword_count="49", priority="Kualitas"):
+def get_gemini_metadata(image_path, api_key, stop_event, use_png_prompt=False, use_video_prompt=False, selected_model_input=None, keyword_count="49", priority="Kualitas", is_vector_conversion=False):
     is_multi_image = isinstance(image_path, list)
     
     if is_multi_image:
@@ -395,7 +429,7 @@ def get_gemini_metadata(image_path, api_key, stop_event, use_png_prompt=False, u
         
         http_status, response_data, error_type, error_detail = _attempt_gemini_request(
             image_path, api_key, model_for_this_attempt, stop_event,
-            use_png_prompt, use_video_prompt, priority, image_basename
+            use_png_prompt, use_video_prompt, priority, image_basename, is_vector_conversion
         )
 
     
