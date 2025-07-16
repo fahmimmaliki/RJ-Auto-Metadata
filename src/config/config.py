@@ -16,7 +16,6 @@
 
 # src/config/config.py
 
-# Default values (kosong untuk keamanan)
 MEASUREMENT_ID = ""
 API_SECRET = ""
 ANALYTICS_URL = ""

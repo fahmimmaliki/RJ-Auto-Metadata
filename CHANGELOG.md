@@ -16,6 +16,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 -
 
+## [3.7.0] - 2025-07-15
+
+### Added
+- **Gemini 2.5 Thinking Models Support:** Full integration with Google's latest Gemini 2.5 models featuring advanced reasoning capabilities:
+  - **Gemini 2.5 Pro:** Dynamic thinking mode (-1)
+  - **Gemini 2.5 Flash:** Dynamic thinking mode (-1)
+  - **Gemini 2.5 Flash Lite:** Standard mode (0) no thinking
+- **Google Generative AI SDK Integration:** Migrated from REST API to official `google-genai` Python SDK (v1.25.0) for:
+  - Native thinking budget configuration support
+  - Improved response handling and error management
+  - Better API structure with `GenerateContentConfig` for advanced model features
+- **Enhanced Token Management:** Significantly increased token limits to prevent MAX_TOKENS errors:
+  - Removed dependency on quality priority for token allocation
+  - High token limits optimized for thinking model overhead
+  - Proper token allocation for both thinking and response generation
+- **Miri Canvas CSV Export:** Added support for Miri Canvas CSV export:
+  - `fileName`, `uniqueId`, `elementName`, `keywords`, `tier`, `contentType`
+  - Custom header quoting, tier set to "Premium"
+  - Specific quote placement for platform compatibility
+
+### Changed
+- **API Architecture Migration:** Complete transition from REST API requests to Google Generative AI SDK:
+  - Maintained backward compatibility with REST API fallback for non-2.5 models
+  - Improved error handling with proper SDK exception management
+  - Enhanced response parsing for both SDK and REST API responses
+- **User Interface Language:** Converted all UI elements and log messages from Indonesian to English for:
+  - Better international accessibility and user experience
+  - Improved consistency across the application
+  - Enhanced compatibility with global user base
+- **Model Configuration:** Updated model selection and configuration system:
+  - Streamlined model-specific settings for thinking capabilities
+  - Optimized configuration constants for easy maintenance
+  - Improved model detection and feature support logic
+
+### Fixed
+- **Thinking Model Response Parsing:** Resolved "invalid response structure" errors for Gemini 2.5 models:
+  - Fixed response structure handling for thinking vs non-thinking models
+  - Proper parsing of SDK response format vs REST API format
+  - Eliminated MAX_TOKENS errors through appropriate token allocation
+- **API Response Validation:** Enhanced response validation for different model types:
+  - Improved error detection and handling for thinking model responses
+  - Better fallback mechanisms for response parsing failures
+  - Robust handling of various response structures from different API endpoints
+
+### Technical Details
+- **SDK Integration:** Implemented proper `google-genai` library integration with `GenerateContentConfig` for advanced model configuration
+- **Thinking Configuration:** Added configurable thinking budget constants for easy model behavior adjustment
+- **Response Handling:** Dual-path response processing supporting both SDK and REST API response formats
+- **Token Optimization:** Optimized token allocation strategy specifically for thinking model requirements
+- **Error Recovery:** Enhanced error handling with proper SDK exception catching and fallback mechanisms
+
+---
 ## [3.6.0] - 2025-06-20
 
 ### Added

@@ -15,8 +15,6 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 # src/utils/logging.py
-
-# Global handler untuk fungsi log
 _log_handler = None
 
 def set_log_handler(handler):

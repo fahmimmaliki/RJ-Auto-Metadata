@@ -34,14 +34,14 @@ RJ Auto Metadata is a powerful desktop application built with Python and CustomT
     *   **Folder Selection:** Dedicated input and output folder paths. Ensures input/output are distinct.
     *   **API Key Management:** Text area for multiple Gemini API keys (one per line). Supports loading/saving keys to/from `.txt` files. Option to show/hide keys in the UI.
     *   **API Key Paid Option:** New checkbox in the API Key section. If you have a paid Gemini API key, enable this option to allow the use of more workers than the number of API keys (removes the usual worker limit for free users). For free users, leave this unchecked to avoid hitting rate limits. **Note: Even with this option enabled, the maximum allowed workers is 100 for stability.**
-    *   **API Model Selection:** Choose a specific Gemini model (e.g., `gemini-1.5-flash`, `gemini-1.5-pro`) or use automatic rotation (`Auto Rotasi`) via a dropdown.
-    *   **Prompt Priority:** Select the desired trade-off between result detail and speed (`Kualitas`, `Seimbang`, `Cepat`) via a dropdown, using different underlying prompts.
-        *   _Note:_ Prompt length affects API token usage. Longer prompts (`Kualitas`) consume more input tokens per request, potentially hitting token limits (TPM/TPD) faster. Shorter prompts (`Cepat`) are more token-efficient.
+    *   **API Model Selection:** Choose a specific Gemini model (e.g., `gemini-1.5-flash`, `gemini-2.5-pro`) or use automatic rotation (`Auto Rotation`) via a dropdown.
+    *   **Prompt Quality:** Select the desired trade-off between result detail and speed (`Detailed`, `Balanced`, `Less`) via a dropdown, using different underlying prompts.
+        *   _Note:_ Prompt length affects API token usage. Longer prompts (`Detailed`) consume more input tokens per request, potentially hitting token limits (TPM/TPD) faster. Shorter prompts (`Less`) are more token-efficient.
     *   **Keyword Count:** Specify the maximum number of keywords to request from the API (min 8, max 49).
     *   **Performance Tuning:** Adjust the number of `Workers` and `Delay (s)` between API calls.
     *   **File Handling Options:**
         *   `Rename File?`: Automatically renames output files using the generated title.
-        *   `Auto Kategori?`: (Experimental) Attempts to assign categories based on API results (`src/metadata/categories/`).
+        *   `Auto Category?`: (Experimental) Attempts to assign categories based on API results (`src/metadata/categories/`).
         *   `Auto Foldering?`: Automatically organizes output files into subdirectories (`Images`, `Vectors`, `Videos`) based on their type.
     *   **Appearance:** Choose between `Light`, `Dark`, or `System` themes, powered by CustomTkinter.
 *   **Intuitive User Interface (`src/ui/app.py`):**
@@ -97,7 +97,7 @@ The application follows these general steps during processing:
 *   **Required Python Packages:** Install via `pip install -r requirements.txt`. Key packages:
     *   `customtkinter>=5.2.2` (GUI)
     *   `Pillow>=11.1.0` (Images)
-    *   `google-generativeai>=0.8.4` (Gemini API)
+    *   `google-genai>=1.25.0` (Gemini API with thinking models support)
     *   `requests>=2.32.3` (HTTP)
     *   `opencv-python>=4.11.0.86` (Video Frames - needs FFmpeg)
     *   `svglib>=1.5.1`, `reportlab>=4.3.1`, `CairoSVG>=2.7.1` (SVG - needs GTK3)
@@ -174,8 +174,8 @@ Stores settings automatically (usually in `Documents/RJAutoMetadata` on Windows)
 *   `rename`, `auto_kategori`, `auto_foldering`: File handling toggles (booleans).
 *   `api_keys`: List of your Gemini API keys.
 *   `show_api_keys`: UI visibility state (boolean).
-*   `model`: Selected API model (e.g., "gemini-1.5-flash", "Auto Rotasi").
-*   `priority`: Selected prompt priority ("Kualitas", "Seimbang", "Cepat").
+*   `model`: Selected API model (e.g., "gemini-1.5-flash", "Auto Rotation").
+*   `priority`: Selected prompt priority ("Detailed", "Balanced", "Less").
 *   `keyword_count`: Maximum keywords requested (string, e.g., "49").
 *   `theme`: "light", "dark", or "system".
 *   `installation_id`: Anonymous analytics ID.
@@ -187,14 +187,14 @@ Stores settings automatically (usually in `Documents/RJAutoMetadata` on Windows)
 *   **Input/Output Folders:** Must be valid, different directories.
 *   **API Keys:** One key per line. Load/Save/Delete/Show-Hide options available.
 *   **API Key Paid?:** (Checkbox) If you have a paid Gemini API key, enable this to use more workers than the number of API keys. For free users, leave unchecked to avoid rate limits. **Maximum allowed workers is 100.**
-*   **Keyword:** Max keywords from API (8-49).
+*   **Keywords:** Max keywords from API (8-49).
 *   **Workers:** Threads (1-10+). More workers = faster, but more API usage. (Paid users can use more workers by enabling the checkbox above, up to a maximum of 100.)
 *   **Delay (s):** Pause between API calls per worker (avoids rate limits).
 *   **Theme:** Visual style selection.
-*   **Model:** Select specific Gemini model or Auto Rotasi.
-*   **Prioritas:** Choose prompt detail level (Kualitas/Seimbang/Cepat).
+*   **Models:** Select specific Gemini model or Auto Rotation.
+*   **Quality:** Choose prompt detail level (Detailed/Balanced/Less).
 *   **Rename File?:** Renames output file to `Generated Title.ext`.
-*   **Auto Kategori?:** Applies experimental categories.
+*   **Auto Category?:** Applies experimental categories.
 *   **Auto Foldering?:** Sorts output into `Images/`, `Vectors/`, `Videos/`.
 
 ### 6.3. Analytics
@@ -210,10 +210,10 @@ Stores settings automatically (usually in `Documents/RJAutoMetadata` on Windows)
     *   *Optional:* If you prefer no console window, navigate to the installation directory and run `RJ Auto Metadata No Console.exe` directly.
 2.  **Set Folders:** Use "Browse" for **Input** & **Output** directories (must be different!).
 3.  **Enter API Keys:** Paste keys (one per line) or use "Load". Manage with Save/Delete/Show-Hide.
-4.  **Adjust Settings (Optional):** Tune `Keyword`, `Workers`, `Delay`, `Theme`, `Model`, `Prioritas`, Toggles (`Rename?`, etc.).
-5.  **Initiate Processing:** Click **"Mulai Proses"**. Buttons will update state.
-6.  **Monitor:** Watch the **"Log"** area for detailed steps, batch progress `(x/x)`, success/failure messages.
-7.  **Interrupt (Optional):** Click **"Hentikan"** to stop gracefully (may take a moment).
+4.  **Adjust Settings (Optional):** Tune `Keywords`, `Workers`, `Delay`, `Theme`, `Models`, `Quality`, Toggles (`Rename?`, etc.).
+5.  **Initiate Processing:** Click **"Start Processing"**. Buttons will update state.
+6.  **Monitor:** Watch the **"Logs"** area for detailed steps, batch progress `(x/x)`, success/failure messages.
+7.  **Interrupt (Optional):** Click **"Stop"** to stop gracefully (may take a moment).
 8.  **Review Results:** Check summary dialog & Output Folder for processed files.
 9.  **Clear Log (Optional):** Click **"Clear Log"** for a clean slate.
 10. **Exit:** Close window (settings save automatically).
@@ -235,11 +235,12 @@ Your usage is evaluated against each limit independently. If you exceed any one 
 
 | Model                              | RPM | TPM      | RPD  |
 |-------------------------------------|-----|----------|------|
-| Gemini 2.5 Flash Preview 04-17      | 10  | 250,000  | 500  |
-| Gemini 2.5 Pro Experimental 03-25   | 5   | 250,000  | 25   |
+| Gemini 2.5 Flash                    | 10  | 250,000  | 500  |
+| Gemini 2.5 Flash-Lite Preview 06-17 | 15  | 250,000  | 500  |
+| Gemini 2.5 Pro                      | 5   | 250,000  | 25   |
 | Gemini 2.0 Flash                    | 15  | 1,000,000| 1,500|
 | Gemini 2.0 Flash-Lite               | 30  | 1,000,000| 1,500|
-| Gemini 1.5 Pro                      | 2   | 250,000  |  50  |
+| Gemini 1.5 Pro                      | 2   | 250,000  | 50   |
 | Gemini 1.5 Flash                    | 15  | 250,000  | 500  |
 | Gemini 1.5 Flash-8b                 | 15  | 250,000  | 500  |
 
@@ -250,7 +251,7 @@ Your usage is evaluated against each limit independently. If you exceed any one 
 
 *   **Images:** `.jpg`, `.jpeg`, `.png`
 *   **Vectors:** `.ai`, `.eps` (Need Ghostscript), `.svg` (Need Ghostscript & GTK3)
-*   **Videos:** `.mp4`, `.mkv`, `avi`, `mov`, `mpeg`, `etc` (Need FFmpeg)
+*   **Videos:** `.mp4`, `.mov`, `etc` (Need FFmpeg)
 
 *Processing vectors/videos WILL FAIL without the required external tools!*
 
@@ -286,6 +287,11 @@ RJ Auto Metadata automatically generates CSV files optimized for **5 major stock
     *   Features: Standard formatting with platform-specific fields
     *   Default values: Nudity and Editorial set to "no"
 
+*   **Miri Canvas** (`miri_canvas_export.csv`)
+    *   Format: fileName, uniqueId, elementName, keywords, tier, contentType
+    *   Features: Custom header quoting, tier set to "Premium"
+    *   Special formatting: Specific quote placement for platform compatibility
+
 ### 10.2. Platform-Specific Features
 
 **Smart Sanitization:** Each platform has custom data cleaning rules:
@@ -293,7 +299,7 @@ RJ Auto Metadata automatically generates CSV files optimized for **5 major stock
 *   **Vecteezy:** Removes "vector" words from keywords, replaces colons with hyphens
 *   **Others:** Minimal sanitization for maximum compatibility
 
-**Automatic Categorization:** When "Auto Kategori?" is enabled, the AI analyzes content and assigns appropriate categories for Adobe Stock and Shutterstock.
+**Automatic Categorization:** When "Auto Category?" is enabled, the AI analyzes content and assigns appropriate categories for Adobe Stock and Shutterstock.
 
 **Vector Detection:** Automatically detects vector files and applies appropriate flags (e.g., Shutterstock's "illustration" field).
 
@@ -303,7 +309,7 @@ All CSV files are generated in your specified **Output Folder** and updated in r
 
 ## 11. Troubleshooting Common Issues
 
-*   **"Exiftool not found" / Errors on `.ai`/`.eps` / Errors on `.mp4`/`.mkv`:**
+*   **"Exiftool not found" / Errors on `.ai`/`.eps` / Errors on `.mp4`/`.mov`:**
     *   **Using Installer:** These tools should be bundled. Ensure the installation completed without errors and the `tools/` subfolder exists with content. Check the application log for specific errors during execution.
     *   **Running from Source:** The respective tool (ExifTool, Ghostscript, FFmpeg) is likely not installed correctly or its location is not included in the system's PATH environment variable. Reinstall the tool or add it to your PATH.
 *   **Errors on `.svg` (Windows):**

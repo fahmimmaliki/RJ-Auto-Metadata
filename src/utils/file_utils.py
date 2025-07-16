@@ -24,14 +24,13 @@ import hashlib
 import shutil
 from src.utils.logging import log_message
 
-# Konstanta
 CSV_LOCK_EXTENSION = ".processing"
 TEMP_FILES_CREATED = []
 SUPPORTED_IMAGE_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.eps', '.ai', '.svg')
 SUPPORTED_VIDEO_EXTENSIONS = ('.mp4', '.mpeg', '.3gp', '.avi', '.mov', '.mkv', '.flv', '.wmv')
 ALL_SUPPORTED_EXTENSIONS = SUPPORTED_IMAGE_EXTENSIONS + SUPPORTED_VIDEO_EXTENSIONS
 WRITABLE_EXIF_EXTENSIONS = ('.jpg', '.jpeg')
-WRITABLE_METADATA_VIDEO_EXTENSIONS = ('.mp4', '.mov', '.mkv', '.avi')
+WRITABLE_METADATA_VIDEO_EXTENSIONS = ('.mp4', '.mov', '.avi')
 title_history = {}
 
 def sanitize_filename(filename):
@@ -69,7 +68,7 @@ def ensure_unique_title(title, image_path):
             unique_suffix = f" Variant {file_hash}"
             return sanitized + unique_suffix
         except Exception as e:
-            log_message(f"Error membuat judul unik: {e}")
+            log_message(f"Error creating unique title: {e}")
             return sanitized + f" Variant {len(title_history)}"
     title_history[sanitized] = True
     return sanitized
@@ -93,7 +92,7 @@ def lock_csv_file(csv_path):
             f.write("Processing in progress. Please wait.")
         return True
     except Exception as e:
-        log_message(f"Error mengunci file CSV: {e}")
+        log_message(f"Error locking CSV file: {e}")
         return False
 
 def unlock_csv_file(csv_path):
@@ -103,7 +102,7 @@ def unlock_csv_file(csv_path):
             os.remove(lock_file)
         return True
     except Exception as e:
-        log_message(f"Error membuka kunci file CSV: {e}")
+        log_message(f"Error unlocking CSV file: {e}")
         return False
 
 def is_csv_locked(csv_path):
@@ -118,7 +117,7 @@ def write_to_csv_with_lock(csv_path, header, data_row):
             return result
         return write_to_csv(csv_path, header, data_row)
     except Exception as e:
-        log_message(f"Error menulis CSV dengan penguncian: {e}")
+        log_message(f"Error writing CSV with locking: {e}")
         return False
 
 def write_to_csv(csv_path, header, data_row):
@@ -126,9 +125,9 @@ def write_to_csv(csv_path, header, data_row):
     if not os.path.exists(csv_dir):
         try:
             os.makedirs(csv_dir)
-            log_message(f"  Membuat direktori CSV: {csv_dir}")
+            log_message(f"Creating CSV directory: {csv_dir}")
         except Exception as e:
-            log_message(f"  Error: Gagal membuat direktori CSV '{csv_dir}': {e}")
+            log_message(f"Error: Failed to create CSV directory '{csv_dir}': {e}")
             return False
     file_exists = os.path.isfile(csv_path)
     try:
@@ -139,7 +138,7 @@ def write_to_csv(csv_path, header, data_row):
             writer.writerow(data_row)
         return True
     except Exception as e:
-        log_message(f"  Error: Gagal menulis ke file CSV '{os.path.basename(csv_path)}': {e}")
+        log_message(f"Error: Failed to write to CSV file '{os.path.basename(csv_path)}': {e}")
         return False
 
 def read_api_keys(file_path):
@@ -147,19 +146,19 @@ def read_api_keys(file_path):
         with open(file_path, "r", encoding='utf-8') as f:
             keys = [line.strip() for line in f if line.strip()]
             if not keys:
-                log_message(f"Warning: File API key '{os.path.basename(file_path)}' kosong atau tidak berisi kunci valid.")
+                log_message(f"Warning: File API key '{os.path.basename(file_path)}' is empty or does not contain valid keys.")
                 return []
             return keys
     except FileNotFoundError:
-        log_message(f"Error: File API key tidak ditemukan di {file_path}")
+        log_message(f"Error: File API key not found in {file_path}")
         return None
     except Exception as e:
-        log_message(f"Error saat membaca file API key '{os.path.basename(file_path)}': {e}")
+        log_message(f"Error when reading API key file '{os.path.basename(file_path)}': {e}")
         return None
 
 def is_running_as_executable():
     """
-    Memeriksa apakah program berjalan sebagai executable.
+    Check if the program is running as an executable.
     """
     global IS_NUITKA_EXECUTABLE
     if IS_NUITKA_EXECUTABLE:
@@ -182,5 +181,4 @@ def is_running_as_executable():
         pass
     return False
 
-# Tambahkan variabel global untuk flag
 IS_NUITKA_EXECUTABLE = False

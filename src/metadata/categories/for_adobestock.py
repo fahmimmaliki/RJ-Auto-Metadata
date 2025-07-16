@@ -17,17 +17,7 @@
 # src/metadata/categories/for_adobestock.py
 
 def map_to_adobe_stock_category(title, description, tags):
-    """
-    Memetakan metadata ke kategori Adobe Stock.
-    
-    Args:
-        title: Judul gambar/video
-        description: Deskripsi gambar/video
-        tags: Daftar tag/keyword
-        
-    Returns:
-        String ID kategori Adobe Stock yang sesuai
-    """
+
     keywords = [tag.lower() for tag in tags]
     title_lower = title.lower()
     desc_lower = description.lower()
@@ -58,23 +48,19 @@ def map_to_adobe_stock_category(title, description, tags):
     
     category_scores = {cat_id: 0 for cat_id in categories}
     
-    # Skor berdasarkan keyword
     for cat_id, cat_keywords in categories.items():
         for kw in keywords:
             if any(cat_kw in kw for cat_kw in cat_keywords):
                 category_scores[cat_id] += 3
     
-    # Skor berdasarkan judul (lebih penting)
     for cat_id, cat_keywords in categories.items():
         if any(cat_kw in title_lower for cat_kw in cat_keywords):
             category_scores[cat_id] += 5 
     
-    # Skor berdasarkan deskripsi
     for cat_id, cat_keywords in categories.items():
         if any(cat_kw in desc_lower for cat_kw in cat_keywords):
             category_scores[cat_id] += 1
     
-    # Pilih kategori dengan skor tertinggi
     best_category = max(category_scores.items(), key=lambda x: x[1])
     
     if best_category[1] == 0:

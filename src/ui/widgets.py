@@ -20,7 +20,7 @@ import tkinter as tk
 
 class ToolTip:
     """
-    Kelas untuk menampilkan tooltip pada widget.
+    Class to display a tooltip on a widget.
     """
     def __init__(self, widget, text):
         self.widget = widget

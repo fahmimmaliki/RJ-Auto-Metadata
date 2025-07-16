@@ -31,45 +31,37 @@ def _get_base_dir():
          try:
              script_dir = os.path.dirname(os.path.abspath(__file__))
              project_root = os.path.dirname(os.path.dirname(script_dir))
-             log_message(f"Detected script mode (python executable). Base dir set relative to __file__: {project_root}", "info")
              return project_root
          except NameError:
               log_message("Could not determine script path using __file__, falling back to executable dir.", "warning")
-              return base_dir # Fallback to executable dir
+              return base_dir
     else:
-         # Likely running as a bundled executable
          log_message(f"Detected bundled mode. Base dir set relative to sys.executable: {base_dir}", "info")
          return base_dir
 
 def _run_command(command_parts):
-    """
-    Helper function to run a command and check its success.
-    Expects the full path to the executable as the first element.
-    """
     executable = command_parts[0]
     if not os.path.exists(executable) or not os.path.isfile(executable):
          log_message(f"Executable '{executable}' does not exist or is not a file.")
          return False
     try:
         process = subprocess.run(
-            command_parts, # command_parts[0] should be the full path now
+            command_parts,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            check=False, # Don't raise exception on non-zero exit
-            creationflags=subprocess.CREATE_NO_WINDOW if platform.system() == "Windows" else 0 # Hide console window on Windows
+            check=False,
+            creationflags=subprocess.CREATE_NO_WINDOW if platform.system() == "Windows" else 0
         )
         log_message(f"Ran command: {' '.join(command_parts)}, Return Code: {process.returncode}")
         if process.returncode != 0:
-             # Log stderr specifically on failure
              stderr_output = process.stderr.strip()
              if stderr_output:
                  log_message(f"Command stderr: {stderr_output}", "error")
              else:
                  log_message(f"Command failed with no stderr output.", "warning")
-        # Check if return code is 0 (success)
         return process.returncode == 0
-    except FileNotFoundError: # Should ideally not happen if we check os.path.exists first
+    except FileNotFoundError:
         log_message(f"Command '{executable}' not found, although it existed? Check permissions.")
         return False
     except Exception as e:
@@ -77,7 +69,6 @@ def _run_command(command_parts):
         return False
 
 def check_ghostscript():
-    """Checks if Ghostscript is installed and accessible, prioritizing bundled version."""
     global GHOSTSCRIPT_PATH
     log_message("Checking for Ghostscript...")
     base_dir = _get_base_dir()
@@ -86,24 +77,19 @@ def check_ghostscript():
 
     if platform.system() == "Windows":
         potential_names = ["gswin64c.exe", "gswin32c.exe", "gs.exe"]
-        # Check bundled path first
         for name in potential_names:
             bundled_path = os.path.join(base_dir, "tools", "ghostscript", "bin", name)
-            log_message(f"Checking bundled Ghostscript at: {bundled_path}")
             if os.path.exists(bundled_path):
                 gs_executable = bundled_path
                 log_message(f"Ghostscript found in bundled path!")
                 break
-    else: # Linux/macOS
+    else:
         potential_names = ["gs"]
-        # Check bundled path first (adjust path separators if needed for non-Windows)
         bundled_path = os.path.join(base_dir, "tools", "ghostscript", "bin", "gs")
-        log_message(f"Checking bundled Ghostscript at: {bundled_path}")
         if os.path.exists(bundled_path):
              gs_executable = bundled_path
              log_message(f"Ghostscript found in bundled path!")
 
-    # If not found bundled, check PATH
     if not gs_executable:
         log_message("Bundled Ghostscript not found, checking PATH...")
         for name in potential_names:
@@ -115,7 +101,6 @@ def check_ghostscript():
 
     if gs_executable:
         GHOSTSCRIPT_PATH = gs_executable
-        # log_message(f"Attempting to run: {GHOSTSCRIPT_PATH} -h")
         try:
             process = subprocess.run(
                 [GHOSTSCRIPT_PATH, "-h"],
@@ -127,19 +112,15 @@ def check_ghostscript():
             )
             stdout_output = process.stdout.strip()
             stderr_output = process.stderr.strip()
-            # log_message(f"Ghostscript check ('{GHOSTSCRIPT_PATH} -h') returned code: {process.returncode}")
             if stderr_output:
                 log_message(f"Ghostscript check stderr: {stderr_output}")
             if process.returncode == 0 or "ghostscript" in stdout_output.lower() or "ghostscript" in stderr_output.lower():
-                #  log_message(f"Ghostscript found at {gs_executable} and seems operational based on '-h' output.")
                  return True
             else:
-                #  log_message(f"Ghostscript found at {gs_executable} but check command failed or output was unexpected (return code {process.returncode}). Might indicate missing dependencies.")
-                 GHOSTSCRIPT_PATH = None # Clear path as it's unusable
+                 GHOSTSCRIPT_PATH = None
                  return False
         except Exception as e:
-            # log_message(f"Error running Ghostscript check command {GHOSTSCRIPT_PATH} -h: {e}")
-            GHOSTSCRIPT_PATH = None # Clear path as it's unusable
+            GHOSTSCRIPT_PATH = None
             return False
     else:
         log_message("Could not find Ghostscript executable in bundled path or system PATH.")
@@ -153,14 +134,11 @@ def check_ffmpeg():
     ffmpeg_executable = None
     ffmpeg_name = "ffmpeg.exe" if platform.system() == "Windows" else "ffmpeg"
 
-    # Check bundled path first
     bundled_path = os.path.join(base_dir, "tools", "ffmpeg", "bin", ffmpeg_name)
-    log_message(f"Checking bundled FFmpeg at: {bundled_path}")
     if os.path.exists(bundled_path):
         ffmpeg_executable = bundled_path
         log_message(f"FFmpeg found in bundled path!")
 
-    # If not found bundled, check PATH
     if not ffmpeg_executable:
         log_message("Bundled FFmpeg not found, checking PATH...")
         path_executable = shutil.which("ffmpeg")
@@ -179,16 +157,12 @@ def check_ffmpeg():
                 check=False,
                 creationflags=subprocess.CREATE_NO_WINDOW if platform.system() == "Windows" else 0
             )
-            # log_message(f"Ran command: {FFMPEG_PATH} -version, Return Code: {process.returncode}")
             if "ffmpeg version" in process.stderr.lower() or "ffmpeg version" in process.stdout.lower():
-                 # log_message("FFmpeg version check successful (found version string).")
                  return True
             else:
-                 # log_message(f"FFmpeg found at {FFMPEG_PATH} but version check failed (output didn't contain 'ffmpeg version').")
                  FFMPEG_PATH = None
                  return False
         except Exception as e:
-            # log_message(f"Error running FFmpeg version check: {e}")
             FFMPEG_PATH = None
             return False
     else:
@@ -205,17 +179,15 @@ def check_gtk_dependencies():
         log_message(f"Failed to import cairocffi: {e}")
         log_message("This might indicate missing GTK3 runtime libraries, which are needed for SVG processing.")
         return False
-    except Exception as e: # Catch potential DLLNotFoundErrors on Windows etc.
+    except Exception as e:
          log_message(f"An error occurred during cairocffi import check: {e}")
          log_message("This might indicate missing GTK3 runtime libraries (DLLs/SOs), needed for SVG processing.")
          return False
 
-# --- Console Visibility (Windows Only) ---
-
 def set_console_visibility(show):
     if platform.system() != "Windows":
         log_message("Console visibility control is only available on Windows.", "warning")
-        return # Only works on Windows
+        return
 
     try:
         import ctypes
@@ -225,7 +197,7 @@ def set_console_visibility(show):
         console_wnd = ctypes.windll.kernel32.GetConsoleWindow()
         if console_wnd == 0:
             log_message("Could not get console window handle (maybe already hidden or no console?).", "warning")
-            return # No console window found
+            return
 
         if show:
             ctypes.windll.user32.ShowWindow(console_wnd, SW_SHOW)
