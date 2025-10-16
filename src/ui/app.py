@@ -47,7 +47,7 @@ from src.utils.system_checks import (
 from src.metadata.exif_writer import check_exiftool_exists
 from src.api.api_key_checker import check_api_keys_status
 
-APP_VERSION = "3.9.2"
+APP_VERSION = "3.9.3"
 CONFIG_FILE = "config.json"
 
 class MetadataApp(ctk.CTk):
@@ -275,6 +275,7 @@ class MetadataApp(ctk.CTk):
         self._create_combined_api_settings_frame(settings_center_status_frame)
         self._create_log_frame(main_panel)
         self._create_watermark(main_panel)
+        self._create_footer(main_panel)
 
         main_panel.grid_rowconfigure(3, weight=1)
 
@@ -492,6 +493,7 @@ Configuration of application behavior:
         
         self.auto_retry_switch = ctk.CTkSwitch(settings_col3, text="Auto Retry?", variable=self.auto_retry_var, font=self.font_normal)
         self.auto_retry_switch.grid(row=4, column=0, padx=10, pady=(10, 5), sticky="w")
+        
 
 
 
@@ -541,6 +543,26 @@ Configuration of application behavior:
 
         watermark_label = ctk.CTkLabel(bottom_frame, text=f"© Riiicil 2025 - Ver {APP_VERSION}", font=ctk.CTkFont(size=10), text_color=("gray50", "gray70"))
         watermark_label.grid(row=0, column=1, sticky="e", padx=(5, 10))
+        
+    def _create_footer(self, parent):
+        footer_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        footer_frame.grid(row=4, padx=5, pady=(0, 5))
+        footer_frame.grid_columnconfigure(0, weight=1)
+
+        footer_text = (
+            "This tool is FREE. If you paid, you were scammed.\n"
+            "Official version only available at: s.id/riiicil"
+        )
+
+        footer_label = ctk.CTkLabel(
+            footer_frame,
+            text=footer_text,
+            font=ctk.CTkFont(size=10),
+            text_color=("gray50", "gray70"),
+            justify="center"
+        )
+        footer_label.grid(row=0, column=0, sticky="n", padx=10)
+
 
     def _toggle_console_visibility(self):
         if platform.system() == "Windows":
@@ -963,9 +985,6 @@ Configuration of application behavior:
                         self.embedding_var.set(settings.get("embedding", "Enable"))
                         self.available_models = [
                             "Auto Rotation",
-                            "gemini-1.5-flash",
-                            "gemini-1.5-flash-8b"
-                            # "gemini-1.5-pro", 
                             "gemini-2.0-flash",
                             "gemini-2.0-flash-lite",
                             "gemini-2.5-flash",

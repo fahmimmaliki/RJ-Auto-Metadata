@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 -
 
+## [3.9.3] - 2025-09-28
+
+### Changed
+- **Deleting Deprecated Gemini Models:** Removed support for Gemini 1.5 series models (`gemini-1.5-flash`, `gemini-1.5-flash-8b`) due to deprecation by Google.
+- **Default Gemini Model Update:** Changed the default Gemini model from `gemini-1.5-flash` to `gemini-2.0-flash` for improved performance and capabilities.
+- **Application Version Increment:** Updated application version to `3.9.3` to reflect recent changes and improvements.
+- **Footer Addition:** Added a footer to the main application window for enhanced UI aesthetics and information display.
+
 ## [3.9.2] - 2025-08-29
 
 ### Fixed

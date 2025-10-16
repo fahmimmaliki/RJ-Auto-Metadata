@@ -27,7 +27,6 @@ import re
 import threading
 from collections import defaultdict
 from src.utils.logging import log_message
-
 try:
     from google import genai
     from google.genai import types
@@ -39,23 +38,20 @@ from src.api.gemini_prompts import (
     PROMPT_TEXT_BALANCED, PROMPT_TEXT_PNG_BALANCED, PROMPT_TEXT_VIDEO_BALANCED,
     PROMPT_TEXT_FAST, PROMPT_TEXT_PNG_FAST, PROMPT_TEXT_VIDEO_FAST
 )
-
 GEMINI_MODELS = [
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-8b",
     "gemini-2.0-flash",
     "gemini-2.0-flash-lite",  
     "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
     "gemini-2.5-pro"
 ]
-
-DEFAULT_MODEL = "gemini-1.5-flash"
+DEFAULT_MODEL = "gemini-2.0-flash"
 FALLBACK_MODELS = [
     "gemini-2.0-flash",
     "gemini-2.0-flash-lite",
-    "gemini-1.5-flash-8b",
-    "gemini-1.5-flash"
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-pro"
 ]
 MODEL_LAST_USED = defaultdict(float)
 MODEL_LOCK = threading.Lock()
@@ -71,18 +67,16 @@ def should_use_sdk(model_name: str) -> bool:
     return "2.5" in model_name
 
 def get_thinking_config_for_model(model_name: str):
- 
     if not should_use_sdk(model_name):
         return None
-    
     if "gemini-2.5-pro" in model_name:
         return {"thinking_budget": -1}
     elif "gemini-2.5-flash" in model_name and "lite" not in model_name:
         return {"thinking_budget": 0}
     elif "gemini-2.5-flash-lite" in model_name:
         return {"thinking_budget": 0}
-    
     return None
+
 def get_sdk_client(api_key: str):
     if not GENAI_SDK_AVAILABLE:
         return None
@@ -92,12 +86,12 @@ def get_sdk_client(api_key: str):
     except Exception as e:
         log_message(f"Failed to create SDK client: {e}", "error")
         return None 
+    
 DEBUG_FORCE_FAILURE = False 
 DEBUG_FAILURE_RATE = 0.3  
 API_TIMEOUT = 60
 API_MAX_RETRIES = 1 
 API_RETRY_DELAY = 10
-
 FORCE_STOP_FLAG = False
 
 def calculate_smart_delay(api_keys_list: list, user_delay: float) -> tuple[float, str]:
@@ -108,14 +102,12 @@ def calculate_smart_delay(api_keys_list: list, user_delay: float) -> tuple[float
 def select_smart_api_key(api_keys_list: list):
     if not api_keys_list:
         return None
-
     with API_KEY_LOCK:
         now = time.time()
         key_statuses = []
         for key in api_keys_list:
             last_used_time = API_KEY_LAST_USED.get(key, 0)
             key_statuses.append((last_used_time, key))
-
         key_statuses.sort(key=lambda x: x[0])
         selected_key = key_statuses[0][1]
         API_KEY_LAST_USED[selected_key] = now
@@ -124,7 +116,6 @@ def select_smart_api_key(api_keys_list: list):
 def select_best_fallback_model(fallback_models_list: list, excluded_model_name=None):
     if not fallback_models_list:
         return None
-
     model_statuses = []
     for model_name in fallback_models_list:
         if model_name == excluded_model_name:
@@ -135,12 +126,9 @@ def select_best_fallback_model(fallback_models_list: list, excluded_model_name=N
             continue
         last_used_time = MODEL_LAST_USED.get(model_name, 0)
         model_statuses.append((last_used_time, model_name))
-
     if not model_statuses:
         return None
-
     model_statuses.sort(key=lambda x: x[0])
-        
     return model_statuses[0][1]
 
 def is_stop_requested():
@@ -176,9 +164,7 @@ def get_api_endpoint(model_name):
 def select_next_model():
     with MODEL_LOCK:
         sorted_models = sorted(GEMINI_MODELS, key=lambda m: MODEL_LAST_USED.get(m, 0))
-        
         selected_model = sorted_models[0]
-        
         MODEL_LAST_USED[selected_model] = time.time()
         return selected_model
 
@@ -229,7 +215,6 @@ def _attempt_gemini_sdk_request(
             image_paths, current_api_key, model_to_use, stop_event,
             use_png_prompt, use_video_prompt, priority, image_basename, is_vector_conversion
         )
-    
     client = get_sdk_client(current_api_key)
     if not client:
         log_message(f"SDK client creation failed, falling back to REST API for {model_to_use}", "warning")
@@ -237,24 +222,18 @@ def _attempt_gemini_sdk_request(
             image_paths, current_api_key, model_to_use, stop_event,
             use_png_prompt, use_video_prompt, priority, image_basename, is_vector_conversion
         )
-    
     if check_stop_event(stop_event, f"SDK request cancelled before model cooldown: {image_basename}"):
         return -2, None, "stopped", "Process stopped before model cooldown"
-
     wait_for_model_cooldown(model_to_use, stop_event)
-
     if check_stop_event(stop_event, f"SDK request cancelled after model cooldown: {image_basename}"):
         return -2, None, "stopped", "Process stopped after model cooldown"
-
     if isinstance(image_paths, str):
         image_paths = [image_paths]
         log_message(f"Sending {image_basename} to model {model_to_use} via SDK (API Key: ...{current_api_key[-5:]})", "info")
     else:
         log_message(f"Sending {len(image_paths)} frame(s) from {image_basename} to model {model_to_use} via SDK (API Key: ...{current_api_key[-5:]})", "info")
-
     final_is_vector_conversion = is_vector_conversion or "converted" in image_basename.lower()
     is_video_processing = isinstance(image_paths, list) and len(image_paths) > 1
-
     selected_prompt_text = PROMPT_TEXT
     if priority == "Less":
         if use_video_prompt: selected_prompt_text = PROMPT_TEXT_VIDEO_FAST
@@ -269,27 +248,22 @@ def _attempt_gemini_sdk_request(
         elif use_png_prompt: selected_prompt_text = PROMPT_TEXT_PNG
         else: selected_prompt_text = PROMPT_TEXT
     parts = []
-    
     for img_path in image_paths:
         try:
             with open(img_path, "rb") as image_file:
                 image_data = image_file.read()
-            
             parts.append(types.Part.from_bytes(
                 data=image_data,
                 mime_type="image/jpeg"
             ))
-            
         except Exception as e:
             log_message(f"File read error, falling back to REST API for {model_to_use}: {e}", "warning")
             return _attempt_gemini_rest_request(
                 image_paths, current_api_key, model_to_use, stop_event,
                 use_png_prompt, use_video_prompt, priority, image_basename, is_vector_conversion
             )
-    
     parts.append(types.Part.from_text(text=selected_prompt_text))
     max_output_tokens = 15000 if "2.5" in model_to_use else 800
-    
     generation_config = types.GenerateContentConfig(
         temperature=0.2,
         max_output_tokens=max_output_tokens,
@@ -318,10 +292,8 @@ def _attempt_gemini_sdk_request(
             thinking_budget=thinking_config["thinking_budget"]
         )
         generation_config.thinking_config = thinking_config_obj
-
     if check_stop_event(stop_event, f"SDK request cancelled before generate: {image_basename}"):
         return -2, None, "stopped", "Process stopped before SDK generate"
-
     try:
         contents = [
             types.Content(
@@ -329,18 +301,15 @@ def _attempt_gemini_sdk_request(
                 parts=parts
             )
         ]
-        
         response = client.models.generate_content(
             model=model_to_use,
             contents=contents,
             config=generation_config
         )
-        
         response_data = {
             "candidates": [],
             "usageMetadata": {}
         }
-        
         if response.candidates:
             for candidate in response.candidates:
                 candidate_dict = {
@@ -361,9 +330,7 @@ def _attempt_gemini_sdk_request(
                                 "text": part.thought,
                                 "thought": True
                             })
-                
                 response_data["candidates"].append(candidate_dict)
-        
         if hasattr(response, 'usage_metadata'):
             usage = response.usage_metadata
             response_data["usageMetadata"] = {
@@ -371,9 +338,7 @@ def _attempt_gemini_sdk_request(
                 "totalTokenCount": getattr(usage, 'total_token_count', 0),
                 "thoughtsTokenCount": getattr(usage, 'thoughts_token_count', 0)
             }
-        
         return 200, response_data, None, None
-        
     except Exception as e:
         error_msg = str(e)
         log_message(f"SDK failed for {model_to_use}: {error_msg}. Falling back to REST API once.", "warning")
@@ -382,7 +347,7 @@ def _attempt_gemini_sdk_request(
             image_paths, current_api_key, model_to_use, stop_event,
             use_png_prompt, use_video_prompt, priority, image_basename, is_vector_conversion
         )
-
+        
 def _attempt_gemini_request(
     image_paths,
     current_api_key: str,
@@ -416,26 +381,19 @@ def _attempt_gemini_rest_request(
     image_basename: str,
     is_vector_conversion: bool = False
 ) -> tuple:
-
     if check_stop_event(stop_event, f"API request cancelled before model cooldown: {image_basename}"):
         return -2, None, "stopped", "Process stopped before model cooldown"
-
     wait_for_model_cooldown(model_to_use, stop_event)
-
     if check_stop_event(stop_event, f"API request cancelled after model cooldown: {image_basename}"):
         return -2, None, "stopped", "Process stopped after model cooldown"
-
     api_endpoint = get_api_endpoint(model_to_use)
-    
     if isinstance(image_paths, str):
         image_paths = [image_paths]
         log_message(f"Sending {image_basename} to model {model_to_use} via REST API (API Key: ...{current_api_key[-5:]})", "info")
     else:
         log_message(f"Sending {len(image_paths)} frame(s) from {image_basename} to model {model_to_use} via REST API (API Key: ...{current_api_key[-5:]})", "info")
-
     final_is_vector_conversion = is_vector_conversion or "converted" in image_basename.lower()
     is_video_processing = isinstance(image_paths, list) and len(image_paths) > 1
-
     selected_prompt_text = PROMPT_TEXT
     if priority == "Less":
         if use_video_prompt: selected_prompt_text = PROMPT_TEXT_VIDEO_FAST
@@ -449,7 +407,6 @@ def _attempt_gemini_rest_request(
         if use_video_prompt: selected_prompt_text = PROMPT_TEXT_VIDEO
         elif use_png_prompt: selected_prompt_text = PROMPT_TEXT_PNG
         else: selected_prompt_text = PROMPT_TEXT
-    
     prompt_name = "UNKNOWN"
     if selected_prompt_text == PROMPT_TEXT: prompt_name = "PROMPT_TEXT (Detailed)"
     elif selected_prompt_text == PROMPT_TEXT_PNG: prompt_name = "PROMPT_TEXT_PNG (Detailed)"
@@ -464,18 +421,14 @@ def _attempt_gemini_rest_request(
     for img_path in image_paths:
         try:
             file_size = os.path.getsize(img_path)
-            
             with open(img_path, "rb") as image_file:
                 image_data = base64.b64encode(image_file.read()).decode("utf-8")
             mime_type = "image/jpeg" 
             parts.append({"inline_data": {"mime_type": mime_type, "data": image_data}})
-            
         except Exception as e:
             log_message(f"Error reading image file ({os.path.basename(img_path)}): {e}", "error")
             return -3, None, "file_read", str(e)
-    
     parts.append({"text": selected_prompt_text})
-
     max_output_tokens = 800
     if "gemini-2.5-pro" in model_to_use:
         max_output_tokens = 15000  
@@ -483,7 +436,6 @@ def _attempt_gemini_rest_request(
         max_output_tokens = 15000 
     elif "gemini-2.5-flash-lite" in model_to_use:
         max_output_tokens = 15000   
-    
     payload = {
         "contents": [{"role": "user", "parts": parts}],
         "generationConfig": {
@@ -514,15 +466,12 @@ def _attempt_gemini_rest_request(
 
     if check_stop_event(stop_event, f"API request dibatalkan sebelum POST: {image_basename}"):
         return -2, None, "stopped", "Process stopped before API POST"
-
     session = requests.Session()
     session.mount('https://', requests.adapters.HTTPAdapter(
         max_retries=requests.adapters.Retry(total=1, backoff_factor=0.3, status_forcelist=[500, 502, 503, 504], allowed_methods=["POST"], respect_retry_after_header=True)
     ))
-    
     response_event = threading.Event()
     response_container = {'response': None, 'error': None}
-
     def perform_api_request_in_thread():
         try:
             resp = session.post(api_url, headers=headers, json=payload, timeout=API_TIMEOUT, verify=True)
@@ -531,7 +480,6 @@ def _attempt_gemini_rest_request(
             response_container['error'] = e_req
         finally:
             response_event.set()
-
     api_thread = threading.Thread(target=perform_api_request_in_thread)
     api_thread.daemon = True
     api_thread.start()
@@ -540,26 +488,22 @@ def _attempt_gemini_rest_request(
         if check_stop_event(stop_event, f"API request cancelled while waiting for response: {image_basename}"):
             return -2, None, "stopped", "Process stopped while waiting for API response"
         response_event.wait(0.1)
-    
     if response_container['error']:
         e = response_container['error']
         err_msg = f"RequestException ({type(e).__name__}): {str(e)}"
         log_message(f"Error request API for {image_basename} to {model_to_use}: {err_msg}", "error")
         error_type = "timeout" if isinstance(e, requests.exceptions.Timeout) else "connection_error" if isinstance(e, (requests.exceptions.ConnectionError, requests.exceptions.SSLError)) else "request_exception"
         return -4, None, error_type, str(e)
-
     response = response_container['response']
     if response is None:
         log_message(f"Error: Response from API is None without error in container ({image_basename}, {model_to_use}). This should not happen.", "error")
         return -1, None, "internal_null_response", "Response object was None without explicit error."
-    
     http_status_code = response.status_code
     try:
         response_data = response.json()
     except json.JSONDecodeError:
         log_message(f"Error: API response is not valid JSON (Status: {http_status_code}) from {model_to_use} for {image_basename}. Response: {response.text[:200]}...", "error")
         return http_status_code, None, "json_decode_error", response.text[:500]
-
     if http_status_code == 200:
         if "candidates" in response_data and response_data["candidates"]:
             if "2.5" in model_to_use:
@@ -567,15 +511,12 @@ def _attempt_gemini_rest_request(
                 parts = candidate.get("content", {}).get("parts", [])
                 usage_metadata = response_data.get("usageMetadata", {})
                 thoughts_token_count = usage_metadata.get("thoughtsTokenCount", 0)
-                
                 api_method = "SDK" if should_use_sdk(model_to_use) else "REST"
                 log_message(f"Thinking model {model_to_use} ({api_method}) - parts count: {len(parts)}, thoughtsTokenCount: {thoughts_token_count}, candidate keys: {list(candidate.keys())}", "debug")
-                
                 if not parts and thoughts_token_count > 0:
                     log_message(f"Thinking model has thoughts but no parts - content structure: {candidate.get('content', {})}", "debug")
                 elif not parts:
                     log_message(f"Full response structure for debugging: {response_data}", "debug")
-                    
             return 200, response_data, None, None 
         elif "promptFeedback" in response_data and response_data.get("promptFeedback", {}).get("blockReason"):
             feedback = response_data["promptFeedback"]
@@ -594,13 +535,11 @@ def _attempt_gemini_rest_request(
         return http_status_code, response_data, "api_error", api_error_message
 
 def _extract_metadata_from_text(generated_text: str, keyword_count: str):
-    """Extract metadata from Gemini response - handles both JSON structured output and legacy text format"""
     title = ""
     description = ""
     tags = []
     as_category = ""
     ss_category = ""
-    
     try:
         try:
             json_data = json.loads(generated_text.strip())
@@ -619,10 +558,8 @@ def _extract_metadata_from_text(generated_text: str, keyword_count: str):
                 except Exception:
                     max_kw = 49
                 tags = tags[:max_kw]
-                
                 as_category = json_data.get("adobe_stock_category", "")
                 ss_category = json_data.get("shutterstock_category", "")
-                
                 return {
                     "title": title,
                     "description": description,
@@ -654,12 +591,10 @@ def _extract_metadata_from_text(generated_text: str, keyword_count: str):
         ss_cat_match = re.search(r"ShutterstockCategory:\s*([^\n]*)", generated_text)
         if ss_cat_match:
             ss_category = ss_cat_match.group(1).strip()
-            
         log_message(f"Successfully parsed legacy text format with {len(tags)} keywords", "debug")
     except Exception as e:
         log_message(f"[ERROR] Failed to parse metadata from Gemini: {e}")
         return None
-        
     return {
         "title": title,
         "description": description,
@@ -670,22 +605,18 @@ def _extract_metadata_from_text(generated_text: str, keyword_count: str):
 
 def get_gemini_metadata(image_path, api_key, stop_event, use_png_prompt=False, use_video_prompt=False, selected_model_input=None, keyword_count="49", priority="Detailed", is_vector_conversion=False):
     is_multi_image = isinstance(image_path, list)
-    
     if is_multi_image:
         image_basename = f"{os.path.basename(image_path[0])} (+{len(image_path)-1} other frames)"
         log_message(f"Starting process{len(image_path)} video frames with quality: {priority}, model input: {selected_model_input}")
     else:
         image_basename = os.path.basename(image_path)
         log_message(f"Starting process {image_basename} with quality: {priority}, model input: {selected_model_input}")
-    
     if DEBUG_FORCE_FAILURE:
         import random
         if random.random() < DEBUG_FAILURE_RATE:
-            log_message(f"🧪 DEBUG: Artificial failure triggered for {image_basename} (testing Auto Retry)", "warning")
+            log_message(f"Artificial failure triggered for {image_basename} (testing Auto Retry)", "warning")
             return {"error": "debug_artificial_failure", "message": "Simulated failure for Auto Retry testing"}
-    
     allowed_api_ext = ('.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif')
-    
     if is_multi_image:
         for img in image_path:
             _, ext = os.path.splitext(img)
@@ -697,55 +628,42 @@ def get_gemini_metadata(image_path, api_key, stop_event, use_png_prompt=False, u
         if not ext.lower() in allowed_api_ext:
             log_message(f"File type {ext.lower()} not supported for API call ({image_basename}).", "warning")
             return None
-
     if check_stop_event(stop_event, f"get_gemini_metadata cancelled before loop retry: {image_basename}"):
         return "stopped"
-
     wait_for_api_key_cooldown(api_key, stop_event)
     if check_stop_event(stop_event, f"get_gemini_metadata cancelled after API key cooldown: {image_basename}"):
         return "stopped"
-
     current_retries = 0
     last_attempted_model = None
-    
     model_to_use = DEFAULT_MODEL
     is_auto_rotate_mode = (selected_model_input is None or selected_model_input == "Auto Rotation")
-
     if not is_auto_rotate_mode:
         if selected_model_input not in GEMINI_MODELS:
             log_message(f"WARNING: Model input '{selected_model_input}' is not valid. Using default: {DEFAULT_MODEL}", "warning")
             model_to_use = DEFAULT_MODEL
         else:
             model_to_use = selected_model_input
-    
     while current_retries < API_MAX_RETRIES:
         if check_stop_event(stop_event, f"get_gemini_metadata loop retry ({current_retries + 1}) cancelled: {image_basename}"):
             return "stopped"
-
         model_for_this_attempt = model_to_use
         if is_auto_rotate_mode:
             model_for_this_attempt = select_next_model() 
-        
         last_attempted_model = model_for_this_attempt
-        
         http_status, response_data, error_type, error_detail = _attempt_gemini_request(
             image_path, api_key, model_for_this_attempt, stop_event,
             use_png_prompt, use_video_prompt, priority, image_basename, is_vector_conversion
         )
-    
         if http_status == 200 and error_type is None:
             if response_data and "candidates" in response_data and response_data["candidates"]:
                 candidate = response_data["candidates"][0]
                 content = candidate.get("content", {})
                 parts = content.get("parts", [])
-                
                 finish_reason = candidate.get("finishReason", "")
                 generated_text = ""
-                
                 if "2.5" in model_for_this_attempt and not parts:
                     usage_metadata = response_data.get("usageMetadata", {})
                     thoughts_token_count = usage_metadata.get("thoughtsTokenCount", 0)
-                    
                     if finish_reason == "MAX_TOKENS":
                         log_message(f"Thinking model {model_for_this_attempt} hit MAX_TOKENS during thinking phase (thoughtsTokenCount: {thoughts_token_count}). This is expected behavior - the model was thinking too much.", "info")
                         if thoughts_token_count > 8000: 
@@ -753,22 +671,18 @@ def get_gemini_metadata(image_path, api_key, stop_event, use_png_prompt=False, u
                             error_type = "max_tokens_thinking_phase"
                         else:
                             error_type = "max_tokens_no_content"
-                    
                     elif thoughts_token_count > 0:
                         log_message(f"Thinking model {model_for_this_attempt} has thoughtsTokenCount: {thoughts_token_count} but empty parts. Attempting enhanced extraction.", "info")
-                        
                         try:
                             if "text" in content:
                                 generated_text = content.get("text", "")
                                 log_message(f"Thinking model: Found text in content directly", "debug")
-                            
                             if not generated_text and isinstance(content, dict):
                                 for key, value in content.items():
                                     if isinstance(value, str) and ("Title:" in value or "Keywords:" in value):
                                         generated_text = value
                                         log_message(f"Thinking model: Found text in content.{key}", "debug")
                                         break
-                            
                             if not generated_text:
                                 for key, value in candidate.items():
                                     if isinstance(value, str) and ("Title:" in value or "Keywords:" in value):
@@ -779,7 +693,6 @@ def get_gemini_metadata(image_path, api_key, stop_event, use_png_prompt=False, u
                                         generated_text = value.get("text", "")
                                         log_message(f"Thinking model: Found text in candidate.{key}.text", "debug")
                                         break
-                            
                             if not generated_text and "parts" in candidate.get("content", {}):
                                 all_parts = candidate.get("content", {}).get("parts", [])
                                 for part in all_parts:
@@ -787,43 +700,35 @@ def get_gemini_metadata(image_path, api_key, stop_event, use_png_prompt=False, u
                                         generated_text = part.get("text", "")
                                         log_message(f"Thinking model: Found text in hidden parts", "debug")
                                         break
-                                        
                             if generated_text:
                                 log_message(f"Thinking model enhanced extraction succeeded for {model_for_this_attempt}", "info")
                             else:
                                 log_message(f"Thinking model enhanced extraction failed, full candidate structure: {list(candidate.keys())}", "debug")
                                 log_message(f"Content structure: {content}", "debug")
                                 log_message(f"Response keys: {list(response_data.keys())}", "debug")
-                                
                         except Exception as e:
                             log_message(f"Thinking model enhanced extraction exception: {e}", "debug")
-                
                 if parts and not generated_text:
                     for part in parts:
                         if part.get("text") and not part.get("thought"):
                             generated_text = part.get("text", "")
                             break
-                    
                     if not generated_text:
                         text_parts = [part for part in parts if part.get("text")]
                         if text_parts:
                             generated_text = text_parts[-1].get("text", "")
-                    
                     if not generated_text:
                         for part in parts:
                             if part.get("text"):
                                 generated_text = part.get("text", "")
                                 break
-                    
                     if not generated_text:
                         log_message(f"Debug: Response parts structure from {model_for_this_attempt}: {[list(part.keys()) for part in parts]}", "debug")
                     else:
                         thinking_parts = [part for part in parts if part.get("thought")]
                         non_thinking_parts = [part for part in parts if part.get("text") and not part.get("thought")]
-                
                 if generated_text:
                     extracted_metadata = _extract_metadata_from_text(generated_text, keyword_count)
-                    
                     if extracted_metadata:
                         log_message(f"Metadata successfully extracted from {model_for_this_attempt} for {image_basename}", "success")
                         time.sleep(SUCCESS_DELAY)
@@ -847,7 +752,6 @@ def get_gemini_metadata(image_path, api_key, stop_event, use_png_prompt=False, u
             else:
                 log_message(f"Success response (200) but no 'candidates' from {model_for_this_attempt} ({image_basename}).", "warning")
                 error_type = "success_no_candidates_data"
-        
         if error_type == "stopped":
             log_message(f"Processing stopped during API attempt for {image_basename}. Detail: {error_detail}", "warning")
             return "stopped"
@@ -859,7 +763,7 @@ def get_gemini_metadata(image_path, api_key, stop_event, use_png_prompt=False, u
             if response_data and "error" in response_data:
                 api_error_msg = response_data["error"].get("message", error_detail)
             if http_status == 429 or (response_data and response_data.get("error", {}).get("code") == 429):
-                log_message(f"Rate limit from API for model {model_for_this_attempt} / API key ...{api_key[-4:]} on {image_basename}: {api_error_msg}", "warning")
+                log_message(f"Rate limit from API for model {model_for_this_attempt} / API key ...{api_key[-5:]} on {image_basename}: {api_error_msg}", "warning")
                 if not is_auto_rotate_mode:
                     log_message(f"Warning: The model you selected ({model_for_this_attempt}) is reaching the quota limit. Try using a different model or Auto Rotation mode.", "warning")
             else:
@@ -868,14 +772,12 @@ def get_gemini_metadata(image_path, api_key, stop_event, use_png_prompt=False, u
         else:
             error_msg = error_detail or f"Unknown error (HTTP {http_status})"
             log_message(f"Error for {image_basename} with {model_for_this_attempt}: {error_msg}", "error")
-
         current_retries += 1
         if current_retries < API_MAX_RETRIES:
             base_delay = API_RETRY_DELAY * (2 ** (current_retries -1 if current_retries > 0 else 0))
             jitter = random.uniform(0, 0.5 * base_delay)
             actual_delay = base_delay + jitter
             log_message(f"Waiting {actual_delay:.1f} seconds before retry ({current_retries + 1}/{API_MAX_RETRIES}) for {image_basename} (Last model: {model_for_this_attempt}, Error: {error_type or 'N/A'}) ...")
-            
             wait_start_time = time.time()
             while time.time() - wait_start_time < actual_delay:
                 if check_stop_event(stop_event, f"Retry delay stopped for {image_basename}"):
@@ -884,6 +786,5 @@ def get_gemini_metadata(image_path, api_key, stop_event, use_png_prompt=False, u
     final_error_msg = f"Maximum retries exceeded for {image_basename}. Last model: {last_attempted_model}"
     if last_attempted_model and error_detail:
         final_error_msg = f"All attempts failed for {image_basename}. Last error from {last_attempted_model}: {error_detail}"
-    
     log_message(final_error_msg, "error")
     return {"error": final_error_msg}

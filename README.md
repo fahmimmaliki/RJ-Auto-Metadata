@@ -7,7 +7,7 @@
 
 **© Riiicil 2025**
 
-> 🚀 **New to RJ Auto Metadata?** Check out our [**Quick Start Guide**](QUICK_START_GUIDE.md) for platform-specific setup instructions!
+>**New to RJ Auto Metadata?** Check out our [**Quick Start Guide**](QUICK_START_GUIDE.md) for platform-specific setup instructions!
 
 ## 1. Introduction
 
@@ -52,7 +52,7 @@ RJ Auto Metadata is a powerful desktop application built with Python and CustomT
     *   **Folder Selection:** Dedicated input and output folder paths. Ensures input/output are distinct.
     *   **API Key Management:** Text area for multiple Gemini API keys (one per line). Supports loading/saving keys to/from `.txt` files. Option to show/hide keys in the UI.
     *   **API Key Paid Option:** New checkbox in the API Key section. If you have a paid Gemini API key, enable this option to allow the use of more workers than the number of API keys (removes the usual worker limit for free users). For free users, leave this unchecked to avoid hitting rate limits. **Note: Even with this option enabled, the maximum allowed workers is 100 for stability.**
-    *   **API Model Selection:** Choose a specific Gemini model (e.g., `gemini-1.5-flash`, `gemini-2.5-pro`) or use automatic rotation (`Auto Rotation`) via a dropdown.
+    *   **API Model Selection:** Choose a specific Gemini model (e.g., `gemini-2.0-flash`, `gemini-2.5-pro`) or use automatic rotation (`Auto Rotation`) via a dropdown.
     *   **Prompt Quality:** Select the desired trade-off between result detail and speed (`Detailed`, `Balanced`, `Less`) via a dropdown, using different underlying prompts.
         *   _Note:_ Prompt length affects API token usage. Longer prompts (`Detailed`) consume more input tokens per request, potentially hitting token limits (TPM/TPD) faster. Shorter prompts (`Less`) are more token-efficient.
     *   **Keyword Count:** Specify the maximum number of keywords to request from the API (min 8, max 49).
@@ -194,7 +194,7 @@ Stores settings automatically (usually in `Documents/RJAutoMetadata` on Windows)
 *   `rename`, `auto_kategori`, `auto_foldering`: File handling toggles (booleans).
 *   `api_keys`: List of your Gemini API keys.
 *   `show_api_keys`: UI visibility state (boolean).
-*   `model`: Selected API model (e.g., "gemini-1.5-flash", "Auto Rotation").
+*   `model`: Selected API model (e.g., "gemini-2.0-flash", "Auto Rotation").
 *   `priority`: Selected prompt priority ("Detailed", "Balanced", "Less").
 *   `keyword_count`: Maximum keywords requested (string, e.g., "49").
 *   `theme`: "light", "dark", or "system".
@@ -258,13 +258,10 @@ Your usage is evaluated against each limit independently. If you exceed any one 
 | Model                              | RPM | TPM      | RPD  |
 |-------------------------------------|-----|----------|------|
 | Gemini 2.5 Flash                    | 10  | 250,000  | 500  |
-| Gemini 2.5 Flash-Lite Preview 06-17 | 15  | 250,000  | 500  |
+| Gemini 2.5 Flash-Lite               | 15  | 250,000  | 500  |
 | Gemini 2.5 Pro                      | 5   | 250,000  | 25   |
 | Gemini 2.0 Flash                    | 15  | 1,000,000| 1,500|
 | Gemini 2.0 Flash-Lite               | 30  | 1,000,000| 1,500|
-| Gemini 1.5 Pro                      | 2   | 250,000  | 50   |
-| Gemini 1.5 Flash                    | 15  | 250,000  | 500  |
-| Gemini 1.5 Flash-8b                 | 15  | 250,000  | 500  |
 
 > **Note:** Rate limits are more restrictive for experimental and preview models. Always refer to the [official Gemini API documentation](https://ai.google.dev/gemini-api/docs/rate-limits) for the most up-to-date information.
 > RJ Auto Metadata v3.1.0 and later include several internal mechanisms like Smart API Key Selection, Adaptive Inter-Batch Cooldown, and a Fallback Model system to help navigate these limits more effectively and improve processing resilience. However, respecting these limits by configuring appropriate worker counts and base delays remains crucial for sustained operation.
