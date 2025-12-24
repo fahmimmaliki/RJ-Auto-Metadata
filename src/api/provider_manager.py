@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 from typing import Iterable, List, Optional
+import re
 
 from src.api import gemini_api, openai_api, openrouter_api, groq_api
 from src.utils.logging import log_message
@@ -108,11 +109,71 @@ def get_metadata(
     is_vector_conversion: bool = False,
 ):
     module, provider_key = get_provider_module(provider)
+
+    def _fill_keywords_if_short(metadata: dict, keyword_count_value: str):
+        try:
+            limit = int(keyword_count_value)
+            if limit < 1:
+                limit = 49
+            if limit > 100:
+                limit = limit
+        except Exception:
+            limit = 49
+
+        raw_tags = metadata.get("tags") or []
+        title = metadata.get("title", "") or ""
+        description = metadata.get("description", "") or ""
+
+        seen = set()
+        final_tags: List[str] = []
+
+        def add_tag(tag_value):
+            tag_text = str(tag_value).strip()
+            if not tag_text:
+                return
+            tag_text = re.sub(r"[^\w\-]", " ", tag_text)
+            tag_text = re.sub(r"\s+", " ", tag_text).strip()
+            if not tag_text:
+                return
+            if " " in tag_text:
+                tag_text = tag_text.replace(" ", "")
+                if not tag_text:
+                    return
+            lower = tag_text.lower()
+            if lower in seen:
+                return
+            seen.add(lower)
+            final_tags.append(tag_text)
+
+        for tag in raw_tags:
+            add_tag(tag)
+
+        if len(final_tags) >= limit:
+            metadata["tags"] = final_tags[:limit]
+            return metadata
+
+        filler_words: List[str] = []
+
+        def collect_words(text: str):
+            for word in re.split(r"[^A-Za-z0-9]+", text or ""):
+                if len(word) >= 3:
+                    filler_words.append(word)
+
+        collect_words(title)
+        collect_words(description)
+
+        for word in filler_words:
+            if len(final_tags) >= limit:
+                break
+            add_tag(word)
+
+        metadata["tags"] = final_tags[:limit]
+        return metadata
     effective_model = selected_model
     if provider_key == PROVIDER_GEMINI:
         if selected_model in (None, "", "Auto Rotation"):
             effective_model = None
-        return module.get_gemini_metadata(
+        result = module.get_gemini_metadata(
             image_path,
             api_key,
             stop_event,
@@ -123,8 +184,11 @@ def get_metadata(
             priority=priority,
             is_vector_conversion=is_vector_conversion,
         )
+        if isinstance(result, dict) and "error" not in result:
+            return _fill_keywords_if_short(result, keyword_count)
+        return result
     if provider_key == PROVIDER_OPENROUTER:
-        return module.get_openrouter_metadata(
+        result = module.get_openrouter_metadata(
             image_path,
             api_key,
             stop_event,
@@ -135,8 +199,11 @@ def get_metadata(
             priority=priority,
             is_vector_conversion=is_vector_conversion,
         )
+        if isinstance(result, dict) and "error" not in result:
+            return _fill_keywords_if_short(result, keyword_count)
+        return result
     if provider_key == PROVIDER_GROQ:
-        return module.get_groq_metadata(
+        result = module.get_groq_metadata(
             image_path,
             api_key,
             stop_event,
@@ -147,7 +214,10 @@ def get_metadata(
             priority=priority,
             is_vector_conversion=is_vector_conversion,
         )
-    return module.get_openai_metadata(
+        if isinstance(result, dict) and "error" not in result:
+            return _fill_keywords_if_short(result, keyword_count)
+        return result
+    result = module.get_openai_metadata(
         image_path,
         api_key,
         stop_event,
@@ -158,6 +228,9 @@ def get_metadata(
         priority=priority,
         is_vector_conversion=is_vector_conversion,
     )
+    if isinstance(result, dict) and "error" not in result:
+        return _fill_keywords_if_short(result, keyword_count)
+    return result
 
 
 def check_api_keys_status(provider: str, api_keys: Iterable[str], model: Optional[str] = None):

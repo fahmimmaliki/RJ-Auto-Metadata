@@ -547,17 +547,20 @@ def _extract_metadata_from_text(generated_text: str, keyword_count: str):
                 title = json_data.get("title", "")
                 description = json_data.get("description", "")
                 keywords = json_data.get("keywords", [])
+                raw_keywords = []
                 if isinstance(keywords, list):
-                    tags = [str(kw).strip() for kw in keywords if str(kw).strip()]
+                    raw_keywords = [str(kw).strip() for kw in keywords if str(kw).strip()]
+                    tags = list(raw_keywords)
                 elif isinstance(keywords, str):
-                    tags = [kw.strip() for kw in keywords.split(",") if kw.strip()]
-                tags = list(dict.fromkeys(tags))
-                try:
-                    max_kw = int(keyword_count)
-                    if max_kw < 1: max_kw = 49
-                except Exception:
-                    max_kw = 49
-                tags = tags[:max_kw]
+                    raw_keywords = [kw.strip() for kw in keywords.split(",") if kw.strip()]
+                    tags = list(raw_keywords)
+                else:
+                    tags = []
+                tags = list(dict.fromkeys(tags))[:60]
+                # try:
+                #     log_message(f"[Gemini] Raw keywords: {len(raw_keywords)}, after dedup/limit: {len(tags)} (limit 60)", "debug")
+                # except Exception:
+                #     pass
                 as_category = json_data.get("adobe_stock_category", "")
                 ss_category = json_data.get("shutterstock_category", "")
                 return {
@@ -578,20 +581,14 @@ def _extract_metadata_from_text(generated_text: str, keyword_count: str):
             keywords_line = keywords_match.group(1).strip()
             keywords_line = re.split(r"AdobeStockCategory:|ShutterstockCategory:", keywords_line)[0].strip()
             tags = [k.strip() for k in keywords_line.split(",") if k.strip()]
-            tags = list(dict.fromkeys(tags))
-            try:
-                max_kw = int(keyword_count)
-                if max_kw < 1: max_kw = 49
-            except Exception:
-                max_kw = 49
-            tags = tags[:max_kw]
+            tags = list(dict.fromkeys(tags))[:60]
         as_cat_match = re.search(r"AdobeStockCategory:\s*([\d]+\.?\s*[^\n]*)", generated_text)
         if as_cat_match:
             as_category = as_cat_match.group(1).strip()
         ss_cat_match = re.search(r"ShutterstockCategory:\s*([^\n]*)", generated_text)
         if ss_cat_match:
             ss_category = ss_cat_match.group(1).strip()
-        log_message(f"Successfully parsed legacy text format with {len(tags)} keywords", "debug")
+        # log_message(f"Successfully parsed legacy text format with {len(tags)} keywords", "debug")
     except Exception as e:
         log_message(f"[ERROR] Failed to parse metadata from Gemini: {e}")
         return None

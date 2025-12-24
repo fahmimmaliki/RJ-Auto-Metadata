@@ -374,14 +374,33 @@ def write_to_platform_csvs_safe(csv_dir, filename, title, description, keywords,
         
         as_category = ""
         ss_category = ""
+
+        def _normalize_ss_category(raw_ss, is_video_asset, title_text, desc_text, tags_list):
+            allowed_video = {
+                "Animals/Wildlife", "Arts", "Backgrounds/Textures", "Buildings/Landmarks",
+                "Business/Finance", "Education", "Food and drink", "Healthcare/Medical",
+                "Holidays", "Industrial", "Nature", "Objects", "People", "Religion",
+                "Science", "Signs/Symbols", "Sports/Recreation", "Technology", "Transportation"
+            }
+            allowed_image = {
+                "Abstract", "Animals/Wildlife", "Arts", "Backgrounds/Textures", "Beauty/Fashion",
+                "Buildings/Landmarks", "Business/Finance", "Education", "Food and drink",
+                "Healthcare/Medical", "Industrial", "Nature", "Objects", "People", "Religion",
+                "Science", "Signs/Symbols", "Sports/Recreation", "Technology", "Transportation"
+            }
+            allowed = allowed_video if is_video_asset else allowed_image
+            raw_clean = (raw_ss or "").strip()
+            if raw_clean in allowed:
+                return raw_clean
+            mapper = map_to_shutterstock_category_video if is_video_asset else map_to_shutterstock_category
+            return mapper(title_text, desc_text, tags_list)
+
         if auto_kategori_enabled:
             as_category = map_to_adobe_stock_category(safe_title, safe_description, keywords if isinstance(keywords, list) else [])
-            if is_video:
-                ss_category = map_to_shutterstock_category_video(safe_title, safe_description, keywords if isinstance(keywords, list) else [])
-            else:
-                ss_category = map_to_shutterstock_category(safe_title, safe_description, keywords if isinstance(keywords, list) else [])
+            ss_category = _normalize_ss_category("", is_video, safe_title, safe_description, keywords if isinstance(keywords, list) else [])
             log_message(f"Auto Category: Active (AS: {as_category}, SS: {ss_category})")
         else:
+            ss_category = _normalize_ss_category("", is_video, safe_title, safe_description, keywords if isinstance(keywords, list) else [])
             log_message(f"Auto Category: Inactive")
         
         success_count = 0

@@ -44,7 +44,7 @@ from src.utils.system_checks import (check_ghostscript, check_ffmpeg, check_gtk_
 from src.metadata.exif_writer import check_exiftool_exists
 from src.api.api_key_checker import check_api_keys_status
 
-APP_VERSION = "3.11.0"
+APP_VERSION = "3.11.1"
 CONFIG_FILE = "config.json"
 
 class MetadataApp(ctk.CTk):

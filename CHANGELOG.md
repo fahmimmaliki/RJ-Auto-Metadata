@@ -15,6 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 -
+
+## [3.11.1] - 2025-12-24
+
+### Changed
+- Clarified keyword prompts to demand unique, single-word, and relevant lists across providers.
+
+### Fixed
+- Refined keyword extraction logic for Gemini, Groq, OpenAI, and OpenRouter to ensure uniqueness and relevance, with stronger dedup/sanitization.
+- Added fallback parsing of OpenAI text responses to recover metadata when JSON is missing.
+- Introduced provider_manager keyword filler to top up keywords when API returns fewer than requested.
+
 ## [3.11.0] - 2025-12-14
 
 ### Added

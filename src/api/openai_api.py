@@ -23,6 +23,7 @@ import os
 import threading
 import time
 from typing import Dict, Iterable, List, Optional, Tuple, Union
+import re
 
 import requests
 
@@ -58,19 +59,19 @@ OPENAI_MODEL_PRESETS: Dict[str, Dict[str, Optional[Union[str, int, float]]]] = {
         "api_model": "gpt-5",
         "reasoning_effort": "low",
         "verbosity": "low",
-        "max_output_tokens": 1024,
+        "max_output_tokens": 2048,
     },
     "gpt-5-mini (low)": {
         "api_model": "gpt-5-mini",
         "reasoning_effort": "low",
         "verbosity": "low",
-        "max_output_tokens": 1024,
+        "max_output_tokens": 2048,
     },
     "gpt-5-nano (low)": {
         "api_model": "gpt-5-nano",
         "reasoning_effort": "low",
         "verbosity": "low",
-        "max_output_tokens": 1024,
+        "max_output_tokens": 2048,
     },
     "gpt-4.1": {
         "api_model": "gpt-4.1",
@@ -232,9 +233,9 @@ def _build_payload(
     max_output_tokens: Optional[int],
     temperature: Optional[float],
 ) -> dict:
-    keyword_limit = _normalize_keyword_count(keyword_count)
     keyword_instruction = (
-        f"Limit the keywords array to {keyword_limit} items or fewer, prioritising the most relevant ones."
+        "Return 60 single-word keywords; ensure at least 55 are unique. "
+        "If you generate more, keep only the top 60 most relevant. No multi-word phrases."
     )
     input_content = [
         {"type": "input_text", "text": f"{prompt_text}\n{keyword_instruction}"}
@@ -305,15 +306,22 @@ def _build_payload(
 
 
 def _extract_metadata_from_json(raw_json: dict, keyword_count: Union[str, int]):
-    keyword_limit = _normalize_keyword_count(keyword_count)
+    keyword_limit = 60
     keywords = raw_json.get("keywords") or []
+    raw_keywords: List[str] = []
     if isinstance(keywords, list):
-        tags = [str(item).strip() for item in keywords if str(item).strip()]
+        raw_keywords = [str(item).strip() for item in keywords if str(item).strip()]
+        tags = list(raw_keywords)
     elif isinstance(keywords, str):
-        tags = [part.strip() for part in keywords.split(",") if part.strip()]
+        raw_keywords = [part.strip() for part in keywords.split(",") if part.strip()]
+        tags = list(raw_keywords)
     else:
         tags = []
     tags = list(dict.fromkeys(tags))[:keyword_limit]
+    # try:
+    #     log_message(f"[OpenAI] Raw keywords: {len(raw_keywords)}, after dedup/limit: {len(tags)} (limit {keyword_limit})", "debug")
+    # except Exception:
+    #     pass
     return {
         "title": raw_json.get("title", ""),
         "description": raw_json.get("description", ""),
@@ -323,9 +331,52 @@ def _extract_metadata_from_json(raw_json: dict, keyword_count: Union[str, int]):
     }
 
 
+def _extract_metadata_from_text_fallback(text_value: str, keyword_count: Union[str, int]):
+    if not isinstance(text_value, str) or not text_value.strip():
+        return None
+
+    keyword_limit = _normalize_keyword_count(keyword_count)
+    title = ""
+    description = ""
+    tags = []
+    as_category = ""
+    ss_category = ""
+
+    title_match = re.search(r"^Title:\s*(.*)", text_value, re.MULTILINE | re.IGNORECASE)
+    if title_match:
+        title = title_match.group(1).strip()
+    desc_match = re.search(r"^Description:\s*(.*)", text_value, re.MULTILINE | re.IGNORECASE)
+    if desc_match:
+        description = desc_match.group(1).strip()
+    keywords_match = re.search(r"^Keywords:\s*(.*)", text_value, re.MULTILINE | re.IGNORECASE)
+    if keywords_match:
+        keywords_line = keywords_match.group(1).strip()
+        keywords_line = re.split(r"AdobeStockCategory:|ShutterstockCategory:", keywords_line)[0].strip()
+        tags = [k.strip() for k in keywords_line.split(",") if k.strip()]
+        tags = list(dict.fromkeys(tags))[:keyword_limit]
+    as_cat_match = re.search(r"AdobeStockCategory:\s*([\d]+\.?\s*[^\n]*)", text_value)
+    if as_cat_match:
+        as_category = as_cat_match.group(1).strip()
+    ss_cat_match = re.search(r"ShutterstockCategory:\s*([^\n]*)", text_value)
+    if ss_cat_match:
+        ss_category = ss_cat_match.group(1).strip()
+
+    if not title and not description and not tags and not as_category and not ss_category:
+        return None
+
+    return {
+        "title": title,
+        "description": description,
+        "tags": tags[:keyword_limit],
+        "as_category": as_category,
+        "ss_category": ss_category,
+    }
+
+
 def _parse_openai_response(response_data: dict, keyword_count: Union[str, int]):
     outputs = response_data.get("output") or []
     observed_types = set()
+    text_candidates: List[str] = []
     for output in outputs:
         content = output.get("content") or []
         for item in content:
@@ -336,11 +387,15 @@ def _parse_openai_response(response_data: dict, keyword_count: Union[str, int]):
             if item_type in {"text", "output_text"}:
                 text_value = item.get("text")
                 if isinstance(text_value, str):
+                    text_candidates.append(text_value)
                     try:
                         raw_json = json.loads(text_value)
                         if isinstance(raw_json, dict):
                             return _extract_metadata_from_json(raw_json, keyword_count)
                     except (json.JSONDecodeError, TypeError):
+                        fallback = _extract_metadata_from_text_fallback(text_value, keyword_count)
+                        if fallback:
+                            return fallback
                         continue
             elif item_type == "json_schema":
                 schema_payload = item.get("json_schema") or {}
@@ -354,12 +409,35 @@ def _parse_openai_response(response_data: dict, keyword_count: Union[str, int]):
                     if isinstance(candidate, dict):
                         return _extract_metadata_from_json(candidate, keyword_count)
                     if isinstance(candidate, str):
+                        text_candidates.append(candidate)
                         try:
                             raw_json = json.loads(candidate)
                             if isinstance(raw_json, dict):
                                 return _extract_metadata_from_json(raw_json, keyword_count)
                         except (json.JSONDecodeError, TypeError):
+                            fallback = _extract_metadata_from_text_fallback(candidate, keyword_count)
+                            if fallback:
+                                return fallback
                             continue
+                # Fallback: try common text fields inside schema payload
+                for key in ("text", "raw", "string"):
+                    maybe_text = schema_payload.get(key)
+                    if isinstance(maybe_text, str):
+                        text_candidates.append(maybe_text)
+                        fallback = _extract_metadata_from_text_fallback(maybe_text, keyword_count)
+                        if fallback:
+                            return fallback
+    # Final fallback: try any collected text candidates (last first)
+    for text_value in reversed(text_candidates):
+        try:
+            raw_json = json.loads(text_value)
+            if isinstance(raw_json, dict):
+                return _extract_metadata_from_json(raw_json, keyword_count)
+        except Exception:
+            pass
+        fallback = _extract_metadata_from_text_fallback(text_value, keyword_count)
+        if fallback:
+            return fallback
     if outputs and observed_types:
         log_message(
             "OpenAI response content types not parsed: %s"

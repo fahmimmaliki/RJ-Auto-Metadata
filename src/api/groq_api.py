@@ -134,13 +134,11 @@ def _build_payload(
     max_output_tokens: Optional[int],
     temperature: Optional[float],
 ) -> dict:
-    keyword_limit = _normalize_keyword_count(keyword_count)
-
     system_instruction = (
         "You generate stock photography metadata. Respond strictly with JSON that "
         "includes the keys 'title', 'description', 'keywords', 'adobe_stock_category', "
         "and 'shutterstock_category'. Limit text fields to 200 characters and keep the "
-        "keywords array concise and relevant. Do not include extra commentary."
+        "keywords array relevant. Do not include extra commentary."
     )
 
     user_content: List[dict] = []
@@ -150,7 +148,8 @@ def _build_payload(
                 "type": "text",
                 "text": (
                     f"{prompt_text}\n"
-                    f"Limit the keywords array to {keyword_limit} items or fewer, prioritising the most relevant ones."
+                    "Return 60 single-word keywords; ensure at least 55 are unique. "
+                    "If you generate more, keep the top 60 most relevant. No multi-word phrases."
                 ),
             }
         )
@@ -192,15 +191,22 @@ def _build_payload(
 
 
 def _extract_metadata_from_json(raw_json: dict, keyword_count: Union[str, int]) -> dict:
-    keyword_limit = _normalize_keyword_count(keyword_count)
+    keyword_limit = 60
     keywords = raw_json.get("keywords") or []
+    raw_keywords: List[str] = []
     if isinstance(keywords, list):
-        tags = [str(item).strip() for item in keywords if str(item).strip()]
+        raw_keywords = [str(item).strip() for item in keywords if str(item).strip()]
+        tags = list(raw_keywords)
     elif isinstance(keywords, str):
-        tags = [part.strip() for part in keywords.split(",") if part.strip()]
+        raw_keywords = [part.strip() for part in keywords.split(",") if part.strip()]
+        tags = list(raw_keywords)
     else:
         tags = []
     tags = list(dict.fromkeys(tags))[:keyword_limit]
+    # try:
+    #     log_message(f"[Groq] Raw keywords: {len(raw_keywords)}, after dedup/limit: {len(tags)} (limit {keyword_limit})", "debug")
+    # except Exception:
+    #     pass
     return {
         "title": raw_json.get("title", ""),
         "description": raw_json.get("description", ""),

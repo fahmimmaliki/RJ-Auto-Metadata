@@ -16,57 +16,49 @@
 
 # src/api/prompts.py
 PROMPT_TEXT = '''Analyze image, generate JSON metadata:
-{"title": ["minimum 6 words, max 180 chars, descriptive, unique, dont use special characters"], "description": ["detailed, max 180 chars, unique, dont use special characters"], "keywords": ["Give me 60 unique single-word keywords, all relevant to the image, no multi-word phrases. Array"], "adobe_stock_category": ["pick number and name: 1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"], "shutterstock_category": ["pick: 'Abstract', 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Beauty/Fashion', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"]}'''
+{"title": ["minimum 6 words, max 180 chars, descriptive, unique, dont use special characters"], "description": ["detailed, max 180 chars, unique, dont use special characters"], "keywords": ["Give me 60 unique keywords, ensure at least 55 unique; if fewer are obvious, add closely-related synonyms/variations. No multi-word phrases. Array"], "adobe_stock_category": ["pick number and name: 1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"], "shutterstock_category": ["pick: 'Abstract', 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Beauty/Fashion', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"]}'''
 
 PROMPT_TEXT_PNG = '''Analyze main subject only (ignore background), generate JSON:
-{"title": ["focused on main subject, minimum 6 words, max 180 chars, unique, dont use special characters"], "description": ["focused on main subject details only, max 180 chars, unique, dont use special characters"], "keywords": ["Give me 60 unique single-word keywords, all relevant to the image, no multi-word phrases. Array"], "adobe_stock_category": ["pick number and name: 1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"], "shutterstock_category": ["pick: 'Abstract', 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Beauty/Fashion', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"]}'''
+{"title": ["focused on main subject, minimum 6 words, max 180 chars, unique, dont use special characters"], "description": ["focused on main subject details only, max 180 chars, unique, dont use special characters"], "keywords": ["Give me 60 unique keywords, ensure at least 55 unique; if fewer are obvious, add closely-related synonyms/variations. No multi-word phrases. Array"], "adobe_stock_category": ["pick number and name: 1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"], "shutterstock_category": ["pick: 'Abstract', 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Beauty/Fashion', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"]}'''
 
 PROMPT_TEXT_VIDEO = '''
 Analyze these video frames comprehensively and generate detailed JSON video metadata:
-{"title": ["video title, minimum 6 words, max 180 chars, unique, dont use special characters"], "description": ["video description, max 180 chars, unique, dont use special characters"], "keywords": ["Give me 60 unique single-word keywords, all relevant to the image, no multi-word phrases. Array"], "adobe_stock_category": ["pick number and name: 1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"], "shutterstock_category": ["pick one: 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Holidays', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"]}
+{"title": ["video title, minimum 6 words, max 180 chars, unique, dont use special characters"], "description": ["video description, max 180 chars, unique, dont use special characters"], "keywords": ["Give me 60 unique keywords, ensure at least 55 unique; if fewer are obvious, add closely-related synonyms/variations. No multi-word phrases. Array"], "adobe_stock_category": ["pick number and name: 1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"], "shutterstock_category": ["pick one: 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Holidays', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"]}
 '''
 
 
 
 PROMPT_TEXT_BALANCED = '''Generate balanced JSON metadata:
-{"title": ["focused, minimum 5 words, max 165 chars, unique, dont use special characters"], "description": ["clear info, max 165 chars, unique, dont use special characters"], "keywords": ["Give me 60 unique single-word keywords, all relevant to the image, no multi-word phrases. Array"], "adobe_stock_category": ["pick number and name: 1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"], "shutterstock_category": ["pick: 'Abstract', 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Beauty/Fashion', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"]}'''
+{"title": ["focused, minimum 5 words, max 165 chars, unique, dont use special characters"], "description": ["clear info, max 165 chars, unique, dont use special characters"], "keywords": ["Give me 60 unique keywords, ensure at least 55 unique; if fewer are obvious, add closely-related synonyms/variations. No multi-word phrases. Array"], "adobe_stock_category": ["pick number and name: 1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"], "shutterstock_category": ["pick: 'Abstract', 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Beauty/Fashion', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"]}'''
 
 PROMPT_TEXT_PNG_BALANCED = '''
 Generate balanced JSON metadata:
-{"title": ["focused on main subject, minimum 5 words, max 165 chars, unique, dont use special characters"], "description": ["clear info, main subject only, max 165 chars, unique, dont use special characters"], "keywords": ["Give me 60 unique single-word keywords, all relevant to the image, no multi-word phrases. Array"], "adobe_stock_category": ["pick number and name: 1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"], "shutterstock_category": ["pick: 'Abstract', 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Beauty/Fashion', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"]}
+{"title": ["focused on main subject, minimum 5 words, max 165 chars, unique, dont use special characters"], "description": ["clear info, main subject only, max 165 chars, unique, dont use special characters"], "keywords": ["Give me 60 unique keywords, ensure at least 55 unique; if fewer are obvious, add closely-related synonyms/variations. No multi-word phrases. Array"], "adobe_stock_category": ["pick number and name: 1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"], "shutterstock_category": ["pick: 'Abstract', 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Beauty/Fashion', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"]}
 '''
 
 PROMPT_TEXT_VIDEO_BALANCED = '''
 Generate balanced JSON metadata:
-{"title": ["video title, minimum 5 words, max 165 chars, unique, dont use special characters"], "description": ["video description, max 165 chars, unique, dont use special characters"], "keywords": ["Give me 60 unique single-word keywords, all relevant to the image, no multi-word phrases. Array"], "adobe_stock_category": ["pick number and name: 1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"], "shutterstock_category": ["pick one: 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Holidays', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"]}
+{"title": ["video title, minimum 5 words, max 165 chars, unique, dont use special characters"], "description": ["video description, max 165 chars, unique, dont use special characters"], "keywords": ["Give me 60 unique keywords, ensure at least 55 unique; if fewer are obvious, add closely-related synonyms/variations. No multi-word phrases. Array"], "adobe_stock_category": ["pick number and name: 1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"], "shutterstock_category": ["pick one: 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Holidays', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"]}
 '''
 
 
 
-PROMPT_TEXT_FAST = '''Quick JSON: {"title": ["minimum 4 words, max 150 chars, unique, dont use special characters"], "description":["brief, max 150 chars, unique, dont use special characters"], "keywords":["Give me 60 unique single-word keywords, all relevant to the image, no multi-word phrases. Array"], "adobe_stock_category": ["pick number and name: 1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"], "shutterstock_category": ["pick one: 'Abstract', 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Beauty/Fashion', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"]}'''
+PROMPT_TEXT_FAST = '''Quick JSON: {"title": ["minimum 4 words, max 150 chars, unique, dont use special characters"], "description":["brief, max 150 chars, unique, dont use special characters"], "keywords":["Give me 60 unique keywords, ensure at least 55 unique; if fewer are obvious, add closely-related synonyms/variations. No multi-word phrases. Array"], "adobe_stock_category": ["pick number and name: 1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"], "shutterstock_category": ["pick one: 'Abstract', 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Beauty/Fashion', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"]}'''
 
-PROMPT_TEXT_PNG_FAST = '''Subject JSON: {"title": ["main subject, minimum 4 words, max 150 chars, unique, dont use special characters"], "description":["subject details only, max 150 chars, unique, dont use special characters"], "keywords":["Give me 60 unique single-word keywords, all relevant to the image, no multi-word phrases. Array"], "adobe_stock_category": ["pick number and name: 1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"], "shutterstock_category": ["pick: 'Abstract', 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Beauty/Fashion', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"]}'''
+PROMPT_TEXT_PNG_FAST = '''Subject JSON: {"title": ["main subject, minimum 4 words, max 150 chars, unique, dont use special characters"], "description":["subject details only, max 150 chars, unique, dont use special characters"], "keywords":["Give me 60 unique keywords, ensure at least 55 unique; if fewer are obvious, add closely-related synonyms/variations. No multi-word phrases. Array"], "adobe_stock_category": ["pick number and name: 1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"], "shutterstock_category": ["pick: 'Abstract', 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Beauty/Fashion', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"]}'''
 
-PROMPT_TEXT_VIDEO_FAST = '''Video JSON: {"title": ["video action, minimum 4 words, max 150 chars, unique, dont use special characters"], "description":["video summary, max 150 chars, unique, dont use special characters"], "keywords":["Give me 60 unique single-word keywords, all relevant to the image, no multi-word phrases. Array"], "adobe_stock_category": ["pick number and name: 1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"], "shutterstock_category": ["pick one: 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Holidays', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"]}''' 
+PROMPT_TEXT_VIDEO_FAST = '''Video JSON: {"title": ["video action, minimum 4 words, max 150 chars, unique, dont use special characters"], "description":["video summary, max 150 chars, unique, dont use special characters"], "keywords":["Give me 60 unique keywords, ensure at least 55 unique; if fewer are obvious, add closely-related synonyms/variations. No multi-word phrases. Array"], "adobe_stock_category": ["pick number and name: 1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"], "shutterstock_category": ["pick one: 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Holidays', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"]}''' 
 
 _ADOBE_STOCK_CATEGORY_LIST = (
-    "1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, "
-    "8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, "
-    "15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"
+    "1.Animals, 2.Architecture, 3.Business, 4.Drinks, 5.Environment, 6.Mind, 7.Food, 8.Graphics, 9.Leisure, 10.Industry, 11.Landscapes, 12.Lifestyle, 13.People, 14.Plants, 15.Religion, 16.Science, 17.Social, 18.Sports, 19.Technology, 20.Transport, 21.Travel"
 )
 
 _SHUTTERSTOCK_CATEGORY_LIST_IMAGE = (
-    "'Abstract', 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Beauty/Fashion', "
-    "'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', "
-    "'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', "
-    "'Sports/Recreaction', 'Technology', 'Transportation'"
+    "'Abstract', 'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Beauty/Fashion', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"
 )
 
 _SHUTTERSTOCK_CATEGORY_LIST_VIDEO = (
-    "'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Buildings/Landmarks', "
-    "'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Holidays', "
-    "'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', "
-    "'Sports/Recreaction', 'Technology', 'Transportation'"
+    "'Animals/Wildlife', 'Arts', 'Backgrounds/Textures', 'Buildings/Landmarks', 'Business/Finance', 'Education', 'Food and drink', 'Healthcare/Medical', 'Holidays', 'Industrial', 'Nature', 'Objects', 'People', 'Religion', 'Science', 'Signs/Symbols', 'Sports/Recreaction', 'Technology', 'Transportation'"
 )
 
 _OPENAI_JSON_TEMPLATE = '{"title": "", "description": "", "keywords": [], "adobe_stock_category": "", "shutterstock_category": ""}'
@@ -102,21 +94,21 @@ OPENAI_PROMPT_TEXT = _build_openai_prompt(
     intro="Analyze the entire image and produce production-ready metadata.",
     title_rule="Minimum 6 words, maximum 180 characters, descriptive, unique, and avoid special characters",
     description_rule="Minimum 6 words, maximum 180 characters, detailed, unique, and avoid special characters",
-    keyword_rule="Provide up to 60 unique single-word keywords relevant to the image (no multi-word phrases)",
+    keyword_rule="Provide up to 60 unique keywords; ensure at least 55 unique. If fewer are obvious, add closely-related synonyms/variations. No multi-word phrases.",
 )
 
 OPENAI_PROMPT_TEXT_PNG = _build_openai_prompt(
     intro="Focus only on the main subject of the image (ignore the background) when generating metadata.",
     title_rule="Minimum 6 words, maximum 180 characters, describe the main subject only, unique, no special characters",
     description_rule="Minimum 6 words, maximum 180 characters, capture only the main subject details, unique, no special characters",
-    keyword_rule="Provide up to 60 unique single-word keywords that describe the main subject only (no multi-word phrases)",
+    keyword_rule="Provide up to 60 unique keywords that describe the main subject only; ensure at least 55 unique. If fewer are obvious, add closely-related synonyms/variations. No multi-word phrases.",
 )
 
 OPENAI_PROMPT_TEXT_VIDEO = _build_openai_prompt(
     intro="Analyze all video frames comprehensively and generate detailed video metadata.",
     title_rule="Minimum 6 words, maximum 180 characters, describe the video content, unique, no special characters",
     description_rule="Minimum 6 words, maximum 180 characters, summarize the video clearly, unique, no special characters",
-    keyword_rule="Provide up to 60 unique single-word keywords covering the entire video content (no multi-word phrases)",
+    keyword_rule="Provide up to 60 unique keywords covering the entire video content; ensure at least 55 unique. If fewer are obvious, add closely-related synonyms/variations. No multi-word phrases.",
     is_video=True,
 )
 
@@ -124,21 +116,21 @@ OPENAI_PROMPT_TEXT_BALANCED = _build_openai_prompt(
     intro="Analyze the full image and create balanced, concise metadata.",
     title_rule="Minimum 5 words, maximum 165 characters, descriptive, unique, no special characters",
     description_rule="Minimum 5 words, maximum 165 characters, clear informative summary, unique, no special characters",
-    keyword_rule="Provide up to 60 unique single-word keywords relevant to the image (no multi-word phrases)",
+    keyword_rule="Provide up to 60 unique keywords relevant to the image; ensure at least 55 unique. If fewer are obvious, add closely-related synonyms/variations. No multi-word phrases.",
 )
 
 OPENAI_PROMPT_TEXT_PNG_BALANCED = _build_openai_prompt(
     intro="Focus strictly on the main subject when generating metadata.",
     title_rule="Minimum 5 words, maximum 165 characters, main subject only, unique, no special characters",
     description_rule="Minimum 5 words, maximum 165 characters, highlight main subject details only, unique, no special characters",
-    keyword_rule="Provide up to 60 unique single-word keywords for the main subject (no multi-word phrases)",
+    keyword_rule="Provide up to 60 unique keywords for the main subject; ensure at least 55 unique. If fewer are obvious, add closely-related synonyms/variations. No multi-word phrases.",
 )
 
 OPENAI_PROMPT_TEXT_VIDEO_BALANCED = _build_openai_prompt(
     intro="Analyze the video frames to create balanced metadata.",
     title_rule="Minimum 5 words, maximum 165 characters, video-focused, unique, no special characters",
     description_rule="Minimum 5 words, maximum 165 characters, concise video summary, unique, no special characters",
-    keyword_rule="Provide up to 60 unique single-word keywords covering the video content (no multi-word phrases)",
+    keyword_rule="Provide up to 60 unique keywords covering the video content; ensure at least 55 unique. If fewer are obvious, add closely-related synonyms/variations. No multi-word phrases.",
     is_video=True,
 )
 
@@ -146,21 +138,21 @@ OPENAI_PROMPT_TEXT_FAST = _build_openai_prompt(
     intro="Analyze the image quickly and produce concise metadata.",
     title_rule="Minimum 4 words, maximum 150 characters, descriptive, unique, no special characters",
     description_rule="Minimum 4 words, maximum 150 characters, concise, unique, no special characters",
-    keyword_rule="Provide up to 60 unique single-word keywords relevant to the image (no multi-word phrases)",
+    keyword_rule="Provide up to 60 unique keywords relevant to the image; ensure at least 55 unique. If fewer are obvious, add closely-related synonyms/variations. No multi-word phrases.",
 )
 
 OPENAI_PROMPT_TEXT_PNG_FAST = _build_openai_prompt(
     intro="Focus on the main subject only to produce concise metadata.",
     title_rule="Minimum 4 words, maximum 150 characters, main subject only, unique, no special characters",
     description_rule="Minimum 4 words, maximum 150 characters, concise main subject details, unique, no special characters",
-    keyword_rule="Provide up to 60 unique single-word keywords for the main subject (no multi-word phrases)",
+    keyword_rule="Provide up to 60 unique keywords for the main subject; ensure at least 55 unique. If fewer are obvious, add closely-related synonyms/variations. No multi-word phrases.",
 )
 
 OPENAI_PROMPT_TEXT_VIDEO_FAST = _build_openai_prompt(
     intro="Analyze the video frames quickly and produce concise metadata.",
     title_rule="Minimum 4 words, maximum 150 characters, video-focused, unique, no special characters",
     description_rule="Minimum 4 words, maximum 150 characters, concise video summary, unique, no special characters",
-    keyword_rule="Provide up to 60 unique single-word keywords describing the video content (no multi-word phrases)",
+    keyword_rule="Provide up to 60 unique keywords describing the video content; ensure at least 55 unique. If fewer are obvious, add closely-related synonyms/variations. No multi-word phrases.",
     is_video=True,
 )
 
