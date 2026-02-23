@@ -202,36 +202,50 @@ Follow these steps if you want to run the application directly using Python:
     python main.py
     ```
 
-### 5.3. Linux (Ubuntu) Installation
+### 5.3. Linux Installation (One-Command)
 
-For Ubuntu and Ubuntu-based distributions, follow these steps:
+A single setup script handles everything — system packages, virtual environment, Python dependencies, external tools, and a desktop shortcut.
 
-1.  **Install System Dependencies:**
-    ```bash
-    sudo apt update
-    sudo apt install python3 python3-pip python3-venv python3-tk ghostscript ffmpeg exiftool libcairo2-dev libpango1.0-dev libgdk-pixbuf2.0-dev librsvg2-dev
-    ```
+**Supported distributions:** Ubuntu/Debian, Fedora/RHEL/CentOS, Arch Linux, openSUSE
 
-2.  **Clone the Repository:**
-    ```bash
-    git clone https://github.com/riiicil/RJ-Auto-Metadata.git
-    cd RJ-Auto-Metadata
-    ```
+**Option A — From inside the project directory:**
+```bash
+chmod +x setup_linux.sh && ./setup_linux.sh
+```
 
-3.  **Create Virtual Environment and Install Dependencies:**
-    ```bash
-    python3 -m venv venv
-    . venv/bin/activate
-    pip install -r requirements.txt
-    ```
+**Option B — One-liner (downloads and runs):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/fahmimmaliki/RJ-Auto-Metadata/main/setup_linux.sh | bash
+```
 
-4.  **Run the Application:**
-    ```bash
-    . venv/bin/activate
-    python main.py
-    ```
+The script will:
+1. Detect your distro and package manager (apt/dnf/yum/pacman/zypper)
+2. Install system packages: Python 3, Ghostscript, FFmpeg, ExifTool, Cairo, OpenCL headers
+3. Attempt to install AMD ROCm/Mesa OpenCL for GPU acceleration (optional)
+4. Create a Python virtual environment and install all pip dependencies
+5. Verify all tools and report hardware acceleration status
+6. Create `run_linux.sh` and a `.desktop` application shortcut
 
-**Note:** The virtual environment must be activated each time you run the application. You can also create a desktop shortcut or alias for convenience.
+**After setup, run the app with:**
+```bash
+./run_linux.sh
+```
+
+**Manual installation (Ubuntu/Debian only):**
+```bash
+sudo apt update
+sudo apt install python3 python3-pip python3-venv python3-tk \
+    ghostscript ffmpeg libimage-exiftool-perl \
+    libcairo2-dev libpango1.0-dev libgdk-pixbuf2.0-dev librsvg2-dev \
+    ocl-icd-opencl-dev opencl-headers
+git clone https://github.com/fahmimmaliki/RJ-Auto-Metadata.git
+cd RJ-Auto-Metadata
+python3 -m venv venv && . venv/bin/activate
+pip install -r requirements.txt
+python3 main.py
+```
+
+**Note:** The virtual environment must be activated each time you run the application manually. Use `run_linux.sh` to avoid this.
 
 ## 6. Configuration Details
 

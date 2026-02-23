@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
--
+- **Linux One-Command Setup Script (`setup_linux.sh`):** Single script that installs all system dependencies, creates a Python virtual environment, installs pip packages, verifies external tools, and creates a desktop shortcut. Supports Ubuntu/Debian (apt), Fedora/RHEL (dnf/yum), Arch Linux (pacman), and openSUSE (zypper). Also attempts to install AMD ROCm/Mesa OpenCL for GPU acceleration.
 
 ### Changed
 -
