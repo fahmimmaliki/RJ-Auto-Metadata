@@ -55,10 +55,14 @@ FALLBACK_MODELS = [
 ]
 MODEL_LAST_USED = defaultdict(float)
 MODEL_LOCK = threading.Lock()
-API_KEY_LAST_USED = defaultdict(float) 
-API_KEY_LOCK = threading.Lock() 
-API_KEY_MIN_INTERVAL = 3.0 
-SUCCESS_DELAY = 1.0  
+API_KEY_LAST_USED = defaultdict(float)
+API_KEY_LOCK = threading.Lock()
+API_KEY_MIN_INTERVAL = 1.0  # Reduced from 3.0s — per-key cooldown between requests
+SUCCESS_DELAY = 0.0  # Removed hardcoded post-success sleep; cooldown is handled per API key
+
+# SDK client pool: reuse genai.Client instances per API key to avoid repeated object creation
+_SDK_CLIENT_CACHE: dict = {}
+_SDK_CLIENT_CACHE_LOCK = threading.Lock()
 
 def should_use_sdk(model_name: str) -> bool:
     if not GENAI_SDK_AVAILABLE:
@@ -78,20 +82,26 @@ def get_thinking_config_for_model(model_name: str):
     return None
 
 def get_sdk_client(api_key: str):
+    """Return a cached genai.Client for the given API key, creating one if needed."""
     if not GENAI_SDK_AVAILABLE:
         return None
+    with _SDK_CLIENT_CACHE_LOCK:
+        if api_key in _SDK_CLIENT_CACHE:
+            return _SDK_CLIENT_CACHE[api_key]
     try:
         client = genai.Client(api_key=api_key)
+        with _SDK_CLIENT_CACHE_LOCK:
+            _SDK_CLIENT_CACHE[api_key] = client
         return client
     except Exception as e:
         log_message(f"Failed to create SDK client: {e}", "error")
-        return None 
+        return None
     
 DEBUG_FORCE_FAILURE = False 
 DEBUG_FAILURE_RATE = 0.3  
 API_TIMEOUT = 60
-API_MAX_RETRIES = 1 
-API_RETRY_DELAY = 10
+API_MAX_RETRIES = 1
+API_RETRY_DELAY = 5  # Reduced from 10s — with sliding window, other workers continue while this one waits
 FORCE_STOP_FLAG = False
 
 def calculate_smart_delay(api_keys_list: list, user_delay: float) -> tuple[float, str]:
@@ -728,7 +738,6 @@ def get_gemini_metadata(image_path, api_key, stop_event, use_png_prompt=False, u
                     extracted_metadata = _extract_metadata_from_text(generated_text, keyword_count)
                     if extracted_metadata:
                         log_message(f"Metadata successfully extracted from {model_for_this_attempt} for {image_basename}", "success")
-                        time.sleep(SUCCESS_DELAY)
                         return extracted_metadata
                     else:
                         log_message(f"Failed to extract metadata structure (via helper) from Gemini text ({model_for_this_attempt}, {image_basename}).", "warning")

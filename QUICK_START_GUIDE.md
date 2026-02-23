@@ -9,6 +9,41 @@
 
 🔵 macOS - Source Code Installation Only
 
+🟣 Linux (Ubuntu) - Source Code Installation Only
+
+## Linux (Ubuntu) - SOURCE CODE INSTALLATION ONLY
+**Compatibility:** Ubuntu 20.04+ and derivatives
+**Requirements:** Python 3.9+, tkinter
+
+**QUICK SETUP:**
+
+1. **Install system dependencies:**
+   ```bash
+   sudo apt update
+   sudo apt install python3 python3-pip python3-venv python3-tk ghostscript ffmpeg exiftool libcairo2-dev libpango1.0-dev libgdk-pixbuf2.0-dev librsvg2-dev
+   ```
+
+2. **Clone/download source code:**
+   ```bash
+   git clone https://github.com/riiicil/RJ-Auto-Metadata.git
+   cd RJ-Auto-Metadata
+   ```
+
+3. **Create virtual environment and install dependencies:**
+   ```bash
+   python3 -m venv venv
+   . venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+4. **Run the app:**
+   ```bash
+   . venv/bin/activate
+   python main.py
+   ```
+
+**Note:** The virtual environment must be activated each time you run the app.
+
 ## WINDOWS - EASY INSTALLATION
 **Requirements:** Windows 10/11
 

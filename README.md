@@ -31,9 +31,10 @@ RJ Auto Metadata is a powerful desktop application built with Python and CustomT
 *   **Efficient Batch Processing:**
     *   Processes entire folders of files automatically.
     *   Uses a configurable number of parallel worker threads (`concurrent.futures.ThreadPoolExecutor`) for faster throughput (`src/processing/batch_processing.py`).
+    *   **Sliding Window Submission:** Workers are never idle — as soon as one finishes, the next file is submitted immediately (replaces old batch-wait pattern).
+    *   **Adaptive Worker Count:** Default worker count is automatically calculated as `N_logical_cpus × 1.5` (e.g., 24 workers on an 8-core/16-thread CPU). Can be overridden in the UI.
     *   **Thread-Safe Operations:** Supports high-concurrency processing (100+ workers, 1000+ files) with race condition prevention.
     *   **Auto Retry System:** Intelligent failure recovery that automatically retries failed files with configurable attempts per failure type (API errors: 5 attempts, file operations: 3 attempts). Includes real-time counter updates and smart retry timing.
-    *   Adaptive Inter-Batch Cooldown. Automatically adjusts the delay between processing batches. If a high percentage of API calls failed in the previous batch, the delay is temporarily increased (e.g., to 60 seconds) to allow API RPM to recover. Otherwise, the user-defined delay is used. (`src/processing/batch_processing.py`)
 *   **Broad File Format Compatibility:**
     *   **Images:** Processes standard formats like `.jpg`, `.jpeg`, `.png` directly (`src/processing/image_processing/`).
     *   **Vectors:** Handles `.ai`, `.eps`, and `.svg` files. Requires external tools (Ghostscript, GTK3 Runtime) for rendering/conversion before analysis (`src/processing/vector_processing/`).
@@ -146,6 +147,23 @@ The application relies on several external command-line tools for full functiona
 
 **Failure of these tools WILL cause errors for vector/video files!**
 
+### 4.3. Hardware Acceleration (Optional but Recommended)
+
+RJ Auto Metadata automatically detects and uses available hardware acceleration:
+
+*   **GPU via OpenCL (AMD/Intel/NVIDIA):**
+    *   Image resize during compression is offloaded to the GPU using OpenCV's `cv2.UMat` (transparent OpenCL).
+    *   Confirmed working on AMD Radeon RX 6600 (gfx1032) and AMD Radeon Vega integrated graphics.
+    *   No extra installation needed — OpenCV includes OpenCL support by default.
+    *   Falls back to CPU (Pillow LANCZOS) automatically if OpenCL is unavailable.
+*   **libjpeg-turbo (SIMD-accelerated JPEG):**
+    *   Pillow uses libjpeg-turbo for hardware-accelerated JPEG encode/decode when available.
+    *   Verify with: `python3 -c "from PIL import features; print(features.check_feature('libjpeg_turbo'))"`
+*   **Adaptive Worker Count:**
+    *   The default number of workers is automatically set to `N_logical_cpus × 1.5` (e.g., 24 on a 16-thread CPU).
+    *   This follows the Python recommendation for I/O-bound thread pools.
+    *   You can override this in the Workers field in the UI.
+
 ## 5. Installation Guide
 
 There are two main ways to install and run RJ Auto Metadata: using the provided installer or running directly from the source code.
@@ -183,6 +201,37 @@ Follow these steps if you want to run the application directly using Python:
     ```bash
     python main.py
     ```
+
+### 5.3. Linux (Ubuntu) Installation
+
+For Ubuntu and Ubuntu-based distributions, follow these steps:
+
+1.  **Install System Dependencies:**
+    ```bash
+    sudo apt update
+    sudo apt install python3 python3-pip python3-venv python3-tk ghostscript ffmpeg exiftool libcairo2-dev libpango1.0-dev libgdk-pixbuf2.0-dev librsvg2-dev
+    ```
+
+2.  **Clone the Repository:**
+    ```bash
+    git clone https://github.com/riiicil/RJ-Auto-Metadata.git
+    cd RJ-Auto-Metadata
+    ```
+
+3.  **Create Virtual Environment and Install Dependencies:**
+    ```bash
+    python3 -m venv venv
+    . venv/bin/activate
+    pip install -r requirements.txt
+    ```
+
+4.  **Run the Application:**
+    ```bash
+    . venv/bin/activate
+    python main.py
+    ```
+
+**Note:** The virtual environment must be activated each time you run the application. You can also create a desktop shortcut or alias for convenience.
 
 ## 6. Configuration Details
 

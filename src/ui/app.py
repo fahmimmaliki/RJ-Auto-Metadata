@@ -44,7 +44,7 @@ from src.utils.system_checks import (check_ghostscript, check_ffmpeg, check_gtk_
 from src.metadata.exif_writer import check_exiftool_exists
 from src.api.api_key_checker import check_api_keys_status
 
-APP_VERSION = "3.11.2"
+APP_VERSION = "3.12.0"
 CONFIG_FILE = "config.json"
 
 class MetadataApp(ctk.CTk):
@@ -118,7 +118,9 @@ class MetadataApp(ctk.CTk):
         self.output_dir = tk.StringVar()
         self.rename_files_var = tk.BooleanVar(value=False)
         self.delay_var = tk.StringVar(value="10")
-        self.workers_var = tk.StringVar(value="1")
+        # Default workers = CPU-adaptive recommendation (N_logical_cpus × 1.5, capped at 100)
+        from src.processing.batch_processing import RECOMMENDED_WORKERS
+        self.workers_var = tk.StringVar(value=str(RECOMMENDED_WORKERS))
         self.extra_settings_var = tk.BooleanVar(value=False) 
         self.console_visible_var = tk.BooleanVar(value=True)
 

@@ -16,6 +16,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 -
 
+## [3.12.0] - 2026-02-23
+
+### Performance Improvements (Hardware-Optimized)
+
+This release is a major performance overhaul targeting the full hardware stack:
+CPU (AMD Ryzen 7 5800H, 16 threads), GPU (AMD Radeon RX 6600 via OpenCL/gfx1032),
+and RAM (61 GB). Research basis cited inline.
+
+#### Batch Processing Engine (`src/processing/batch_processing.py`)
+- **Sliding Window Continuous Submission:** Replaced batch-wait pattern with
+  `concurrent.futures.wait(FIRST_COMPLETED)` sliding window. Workers are never
+  idle waiting for slow siblings — next file submitted immediately when any
+  worker completes. Applied to both main loop and auto-retry loop.
+  *(Amdahl's Law, 1967; Python concurrent.futures docs, 2024)*
+- **Adaptive Worker Count:** Added `get_recommended_workers()` that computes
+  `min(N_logical_cpus × 1.5, 100)` as the default worker count. On the
+  Ryzen 7 5800H (16 threads) this yields **24 workers** by default.
+  *(Python docs: "For I/O-bound tasks, use more threads than CPU cores")*
+- **CPU-Adaptive Default:** UI now initialises the Workers field to the
+  hardware-recommended value instead of a hardcoded `1`.
+
+#### GPU-Accelerated Image Processing (`src/utils/compression.py`)
+- **OpenCL GPU Resize via cv2.UMat:** Image resize now uses OpenCV's
+  `cv2.UMat` (transparent OpenCL offload) when available. Confirmed working
+  on AMD RX 6600 (gfx1032) via ROCm/OpenCL. Falls back to Pillow LANCZOS
+  on systems without OpenCL.
+  *(Bradski & Kaehler, "Learning OpenCV 3", O'Reilly 2017, Ch. 25)*
+- **libjpeg-turbo Optimised JPEG Save:** Added `_save_jpeg_optimized()` using
+  `subsampling=0` (4:4:4 chroma) and `optimize=True` for Huffman table
+  optimisation. Leverages the confirmed libjpeg-turbo SIMD backend.
+  *(Wallace, "JPEG Still Picture Compression Standard", 1991)*
+- **In-Memory LRU Compression Cache:** Added `_COMPRESS_CACHE` (max 256
+  entries) keyed on `(path, mtime, size)`. Avoids re-compressing unchanged
+  files on retry. *(Tanenbaum, "Modern Operating Systems", §11.4)*
+- **Improved Compression Defaults:**
+  - `MAX_IMAGE_DIMENSION`: 300px → 1024px (better AI analysis detail)
+  - `COMPRESSION_QUALITY`: 20 → 75 (clearer images, fewer API retries)
+  - `MAX_IMAGE_SIZE_MB`: 2 MB → 3 MB
+
+#### Gemini API Client (`src/api/gemini_api.py`)
+- **SDK Client Pool:** `genai.Client` instances are now cached per API key
+  (`_SDK_CLIENT_CACHE`) instead of being created on every request.
+- **Reduced Delays:**
+  - `API_KEY_MIN_INTERVAL`: 3.0 s → 1.0 s (per-key cooldown)
+  - `SUCCESS_DELAY`: 1.0 s → 0.0 s (removed hardcoded post-success sleep)
+  - `API_RETRY_DELAY`: 10 s → 5 s (safe with sliding window)
+
 ## [3.11.2] - 2026-01-17
 
 ### Added

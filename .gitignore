@@ -1,5 +1,6 @@
 firebase_config.py
 src/config/firebase_config.py
+api_keys.txt
 
 # Ignore bundled external tools
 tools/exiftool/

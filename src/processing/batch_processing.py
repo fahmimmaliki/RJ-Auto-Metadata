@@ -22,6 +22,26 @@ import random
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
 
+def get_recommended_workers() -> int:
+    """
+    Return the recommended number of worker threads for this machine.
+
+    For I/O-bound tasks (API calls + file I/O), the optimal thread count is
+    typically N_logical_cpus × 1.5 (Python docs, concurrent.futures, 2024).
+    We cap at 100 (existing app limit) and floor at 4 to avoid under-utilisation.
+
+    Research basis:
+      - Amdahl's Law: parallel speedup bounded by serial fraction (Amdahl, 1967)
+      - Python concurrent.futures docs: "For I/O-bound tasks, use more threads
+        than CPU cores" (Python 3.12 docs)
+      - Ryzen 7 5800H: 8 cores / 16 threads → recommended = min(24, 100) = 24
+    """
+    cpu_count = os.cpu_count() or 4
+    recommended = min(int(cpu_count * 1.5), 100)
+    return max(recommended, 4)
+
+RECOMMENDED_WORKERS: int = get_recommended_workers()
+
 from src.utils.logging import log_message
 from src.utils.file_utils import ensure_unique_title, sanitize_filename
 from src.utils.file_utils import SUPPORTED_IMAGE_EXTENSIONS, SUPPORTED_VIDEO_EXTENSIONS, ALL_SUPPORTED_EXTENSIONS
@@ -657,177 +677,164 @@ def batch_process_files(
                 log_message(f"Warning: Failed to create main CSV directory: {e}", "warning")
         
         effective_num_workers = num_workers
-        
-        futures = []
-        processed_files = set()
+
+        # Map future → (input_path, submit_time) for tracking
+        future_to_path: dict = {}
+        processed_files: set = set()
         current_api_key_index = 0
-        
-        with ThreadPoolExecutor(max_workers=effective_num_workers) as executor:
-            log_message(f"Sending {total_files} jobs to {effective_num_workers} workers...", "warning")
-            
-            batch_index = 0
-            while batch_index < len(files_to_process) and not should_stop():
-                if batch_index > 0 and delay_seconds > 0 and not should_stop():
-                    effective_delay = delay_seconds
-                    cooldown_msg = f"Cool-down {effective_delay} seconds before processing..."
-                    
-                    log_message(cooldown_msg, "cooldown")
-                    
-                    cooldown_start = time.time()
-                    while time.time() - cooldown_start < effective_delay:
-                        if should_stop():
-                            log_message("Processing stopped during cooldown.", "warning")
-                            break
-                        time.sleep(0.1)
-                
-                if should_stop():
-                    log_message("Processing stopped after cooldown.", "warning")
-                    break
-                
-                current_batch_paths = files_to_process[batch_index:batch_index + effective_num_workers]
-                current_batch = [f for f in current_batch_paths
-                                 if os.path.exists(f) and f not in processed_files]
-                
-                if not current_batch:
-                    batch_index += effective_num_workers
+        file_queue = list(files_to_process)  # remaining files to submit
+        file_queue_index = 0
+        pending_futures: set = set()
+        last_submit_time = 0.0  # track when last file was submitted for per-file delay
+
+        def _submit_next_file():
+            """Submit the next available file from the queue. Returns True if submitted."""
+            nonlocal file_queue_index, current_api_key_index, last_submit_time, failed_count, completed_count
+            while file_queue_index < len(file_queue):
+                input_path = file_queue[file_queue_index]
+                file_queue_index += 1
+                if not os.path.exists(input_path) or input_path in processed_files:
                     continue
-                
-                batch_futures = []
-                for idx, input_path in enumerate(current_batch):
-                    if should_stop():
-                        break
-                    
-                    if not os.path.exists(input_path) or input_path in processed_files:
-                        continue
-                    
-                    original_filename = os.path.basename(input_path)
-                    log_message(f" → Processing {original_filename}...", "info") 
-                    
-                    try:
-                        assigned_api_key = api_keys[current_api_key_index % len(api_keys)]
-                        current_api_key_index = (current_api_key_index + 1) % len(api_keys)
-                        
-                        future = executor.submit(
-                            process_single_file,
-                            input_path,
-                            output_dir,
-                            [assigned_api_key],
-                            ghostscript_path,
-                            rename_enabled,
-                            auto_kategori_enabled,
-                            auto_foldering_enabled,
-                            provider_name,
-                            selected_model,
-                            embedding_enabled,
-                            keyword_count,
-                            priority,
-                            stop_event
-                        )
-                        batch_futures.append(future)
-                        futures.append(future)
-                        processed_files.add(input_path)
-                    except Exception as e:
-                        log_message(f"Error submitting job for {original_filename}: {e}", "error")
-                        failed_count += 1
-                        completed_count += 1
-                
-                current_batch_size = len(batch_futures)
-                comp_count = completed_count + current_batch_size
-                
-                if batch_futures:
-                    log_message(f"Batch {batch_index//effective_num_workers + 1} ({comp_count}/{total_files}): Waiting for {len(batch_futures)} file...", "warning")
-                    
-                    for future in concurrent.futures.as_completed(batch_futures):
-                        if should_stop():
-                            for remaining_future in batch_futures:
-                                if not remaining_future.done():
-                                    remaining_future.cancel()
-                            log_message("Processing stopped while waiting for batch results.", "warning")
-                            break
-                        
-                        try:
-                            result = future.result(timeout=120)
-                            completed_count += 1
-                            
-                            if not result:
-                                log_message(f"⨯ Invalid result received", "error")
-                                failed_count += 1
-                                continue
-                            
-                            status = result.get("status", "failed")
-                            input_path_result = result.get("input", "")
-                            filename = os.path.basename(input_path_result) if input_path_result else "unknown file"
-                            
-                            if status == "processed_exif" or status == "processed_no_exif":
-                                processed_count += 1
-                                new_name = result.get("new_filename")
-                                log_msg = f"✓ {filename}" + (f" → {new_name}" if new_name else "")
-                                log_message(log_msg)
-                            elif status == "processed_exif_failed" or status == "processed_unknown_exif_status":
-                                processed_count += 1
-                                new_name = result.get("new_filename")
-                                log_msg = f"⚠ {filename}" + (f" → {new_name}" if new_name else "") + " (EXIF write failed, proceeding)"
-                                log_message(log_msg, "warning")
-                            elif status == "skipped_exists":
-                                skipped_count += 1
-                                log_message(f"⋯ {filename} (already exists)", "info")
-                            elif status == "stopped":
-                                stopped_count += 1
-                                log_message(f"⊘ {filename} (stopped internally)", "warning")
-                            else: 
-                                failed_count += 1
-                                failed_files.append((input_path_result, status, 1))
-                                if status == "failed_api":
-                                     log_message(f"✗ {filename} (API Error/Limit)", "error")
-                                elif status == "failed_copy":
-                                     log_message(f"✗ {filename} (failed copy)", "error")
-                                elif status == "failed_format":
-                                     log_message(f"✗ {filename} (format/file error)", "error")
-                                elif status == "failed_empty":
-                                    log_message(f"✗ {filename} (empty file)", "error")
-                                elif status == "failed_input_missing":
-                                     log_message(f"✗ {filename} (input missing)", "error")
-                                else: 
-                                     log_message(f"✗ {filename} ({status})", "error")
-                            
-                        except concurrent.futures.TimeoutError:
-                            completed_count += 1
-                            failed_count += 1
-                            if 'input_path' in locals():
-                                failed_files.append((input_path, "failed_timeout", 1))
-                            log_message(f"⨯ Timeout waiting for job results for {filename if 'filename' in locals() else 'unknown file'}", "error")
-                        except concurrent.futures.CancelledError:
-                            log_message(f"Job cancelled.", "warning")
-                            stopped_count += 1
-                        except Exception as e:
-                            log_message(f"Error processing results: {e}", "error")
-                            failed_count += 1
-                            if 'input_path' in locals():
-                                failed_files.append((input_path, "failed_exception", 1))
-                        
-                        if progress_callback:
-                            progress_callback(completed_count, total_files)
-                
+                # Apply per-file delay (spread across workers, not per-batch)
+                if delay_seconds > 0 and last_submit_time > 0:
+                    elapsed = time.time() - last_submit_time
+                    wait_needed = delay_seconds - elapsed
+                    if wait_needed > 0:
+                        cooldown_end = time.time() + wait_needed
+                        while time.time() < cooldown_end:
+                            if should_stop():
+                                return False
+                            time.sleep(0.05)
                 if should_stop():
-                    log_message("Stop detected after processing batch results.", "warning")
+                    return False
+                original_filename = os.path.basename(input_path)
+                log_message(f" → Processing {original_filename}...", "info")
+                try:
+                    assigned_api_key = api_keys[current_api_key_index % len(api_keys)]
+                    current_api_key_index = (current_api_key_index + 1) % len(api_keys)
+                    future = executor.submit(
+                        process_single_file,
+                        input_path,
+                        output_dir,
+                        [assigned_api_key],
+                        ghostscript_path,
+                        rename_enabled,
+                        auto_kategori_enabled,
+                        auto_foldering_enabled,
+                        provider_name,
+                        selected_model,
+                        embedding_enabled,
+                        keyword_count,
+                        priority,
+                        stop_event,
+                    )
+                    future_to_path[future] = input_path
+                    pending_futures.add(future)
+                    processed_files.add(input_path)
+                    last_submit_time = time.time()
+                    return True
+                except Exception as e:
+                    log_message(f"Error submitting job for {original_filename}: {e}", "error")
+                    failed_count += 1
+                    completed_count += 1
+            return False
+
+        def _handle_result(future):
+            """Process a completed future and update counters."""
+            nonlocal processed_count, failed_count, skipped_count, stopped_count, completed_count
+            input_path_result = future_to_path.get(future, "")
+            filename = os.path.basename(input_path_result) if input_path_result else "unknown file"
+            try:
+                result = future.result(timeout=120)
+                completed_count += 1
+                if not result:
+                    log_message(f"⨯ Invalid result received", "error")
+                    failed_count += 1
+                    return
+                status = result.get("status", "failed")
+                input_path_r = result.get("input", "")
+                fname = os.path.basename(input_path_r) if input_path_r else filename
+                if status in ("processed_exif", "processed_no_exif"):
+                    processed_count += 1
+                    new_name = result.get("new_filename")
+                    log_msg = f"✓ {fname}" + (f" → {new_name}" if new_name else "")
+                    log_message(log_msg)
+                elif status in ("processed_exif_failed", "processed_unknown_exif_status"):
+                    processed_count += 1
+                    new_name = result.get("new_filename")
+                    log_msg = f"⚠ {fname}" + (f" → {new_name}" if new_name else "") + " (EXIF write failed, proceeding)"
+                    log_message(log_msg, "warning")
+                elif status == "skipped_exists":
+                    skipped_count += 1
+                    log_message(f"⋯ {fname} (already exists)", "info")
+                elif status == "stopped":
+                    stopped_count += 1
+                    log_message(f"⊘ {fname} (stopped internally)", "warning")
+                else:
+                    failed_count += 1
+                    failed_files.append((input_path_r, status, 1))
+                    if status == "failed_api":
+                        log_message(f"✗ {fname} (API Error/Limit)", "error")
+                    elif status == "failed_copy":
+                        log_message(f"✗ {fname} (failed copy)", "error")
+                    elif status == "failed_format":
+                        log_message(f"✗ {fname} (format/file error)", "error")
+                    elif status == "failed_empty":
+                        log_message(f"✗ {fname} (empty file)", "error")
+                    elif status == "failed_input_missing":
+                        log_message(f"✗ {fname} (input missing)", "error")
+                    else:
+                        log_message(f"✗ {fname} ({status})", "error")
+            except concurrent.futures.TimeoutError:
+                completed_count += 1
+                failed_count += 1
+                failed_files.append((input_path_result, "failed_timeout", 1))
+                log_message(f"⨯ Timeout waiting for job results for {filename}", "error")
+            except concurrent.futures.CancelledError:
+                log_message(f"Job cancelled.", "warning")
+                stopped_count += 1
+            except Exception as e:
+                log_message(f"Error processing results: {e}", "error")
+                failed_count += 1
+                failed_files.append((input_path_result, "failed_exception", 1))
+            if progress_callback:
+                progress_callback(completed_count, total_files)
+
+        with ThreadPoolExecutor(max_workers=effective_num_workers) as executor:
+            log_message(f"Sending {total_files} jobs to {effective_num_workers} workers (sliding window)...", "warning")
+
+            # Pre-fill the worker pool up to max_workers
+            while len(pending_futures) < effective_num_workers and not should_stop():
+                if not _submit_next_file():
                     break
-                
-                batch_index += effective_num_workers
-            
+
+            # Sliding window: as each worker finishes, immediately submit the next file
+            while pending_futures and not should_stop():
+                done_set, _ = concurrent.futures.wait(
+                    pending_futures, timeout=0.5, return_when=concurrent.futures.FIRST_COMPLETED
+                )
+                if should_stop():
+                    log_message("Processing stopped while waiting for results.", "warning")
+                    break
+                for done_future in done_set:
+                    pending_futures.discard(done_future)
+                    _handle_result(done_future)
+                    # Immediately submit the next file to keep workers busy
+                    if not should_stop():
+                        _submit_next_file()
+
             if should_stop():
                 log_message("Cancelling remaining tasks...", "warning")
                 provider_manager.set_force_stop(provider_name)
-                
                 remaining_submitted = 0
-                for f in futures:
+                for f in list(pending_futures):
                     if not f.done():
                         f.cancel()
                         remaining_submitted += 1
-                        
                 if remaining_submitted > 0:
                     log_message(f"Cancelling {remaining_submitted} running tasks.", "warning")
                     stopped_count += remaining_submitted
-                    completed_count += remaining_submitted 
+                    completed_count += remaining_submitted
         
         retry_attempt = 1
 
@@ -851,179 +858,139 @@ def batch_process_files(
                 retry_processed = 0
                 retry_failed = 0
                 retry_stopped = 0
-                retry_processed_files = set()
+                retry_processed_files: set = set()
                 current_retry_failed_files = []
+                retry_future_to_path: dict = {}
+                retry_pending: set = set()
+                retry_queue_index = 0
+                retry_last_submit = 0.0
+
+                def _submit_retry_file(retry_exec):
+                    nonlocal retry_queue_index, current_api_key_index, retry_last_submit, retry_failed
+                    while retry_queue_index < len(retry_files):
+                        input_path = retry_files[retry_queue_index]
+                        retry_queue_index += 1
+                        if not os.path.exists(input_path) or input_path in retry_processed_files:
+                            continue
+                        if delay_seconds > 0 and retry_last_submit > 0:
+                            elapsed = time.time() - retry_last_submit
+                            wait_needed = delay_seconds - elapsed
+                            if wait_needed > 0:
+                                cooldown_end = time.time() + wait_needed
+                                while time.time() < cooldown_end:
+                                    if should_stop():
+                                        return False
+                                    time.sleep(0.05)
+                        if should_stop():
+                            return False
+                        original_filename = os.path.basename(input_path)
+                        log_message(f" → Retrying {original_filename}...", "info")
+                        try:
+                            assigned_api_key = api_keys[current_api_key_index % len(api_keys)]
+                            current_api_key_index = (current_api_key_index + 1) % len(api_keys)
+                            future = retry_exec.submit(
+                                process_single_file,
+                                input_path,
+                                output_dir,
+                                [assigned_api_key],
+                                ghostscript_path,
+                                rename_enabled,
+                                auto_kategori_enabled,
+                                auto_foldering_enabled,
+                                provider_name,
+                                selected_model,
+                                embedding_enabled,
+                                keyword_count,
+                                priority,
+                                stop_event,
+                            )
+                            retry_future_to_path[future] = input_path
+                            retry_pending.add(future)
+                            retry_processed_files.add(input_path)
+                            retry_last_submit = time.time()
+                            return True
+                        except Exception as e:
+                            log_message(f"Error submitting retry job for {original_filename}: {e}", "error")
+                            retry_failed += 1
+                            current_retry_failed_files.append(input_path)
+                    return False
 
                 with ThreadPoolExecutor(max_workers=effective_num_workers) as retry_executor:
                     log_message(
-                        f"Sending {len(retry_files)} retry jobs to {effective_num_workers} workers...",
+                        f"Sending {len(retry_files)} retry jobs to {effective_num_workers} workers (sliding window)...",
                         "warning",
                     )
-
-                    retry_batch_index = 0
-
-                    while retry_batch_index < len(retry_files) and not should_stop():
-                        if retry_batch_index > 0 and delay_seconds > 0 and not should_stop():
-                            effective_delay = delay_seconds
-                            cooldown_msg = f"Retry cool-down {effective_delay} seconds before next batch..."
-
-                            log_message(cooldown_msg, "cooldown")
-
-                            cooldown_start = time.time()
-                            while time.time() - cooldown_start < effective_delay:
-                                if should_stop():
-                                    log_message("Retry processing stopped during cooldown.", "warning")
-                                    break
-                                time.sleep(0.1)
-
-                        if should_stop():
-                            log_message("Retry processing stopped after cooldown.", "warning")
+                    # Pre-fill pool
+                    while len(retry_pending) < effective_num_workers and not should_stop():
+                        if not _submit_retry_file(retry_executor):
                             break
 
-                        current_retry_batch = retry_files[
-                            retry_batch_index:retry_batch_index + effective_num_workers
-                        ]
-                        current_retry_batch = [
-                            f
-                            for f in current_retry_batch
-                            if os.path.exists(f) and f not in retry_processed_files
-                        ]
-
-                        if not current_retry_batch:
-                            retry_batch_index += effective_num_workers
-                            continue
-
-                        batch_retry_futures = []
-                        for input_path in current_retry_batch:
-                            if should_stop():
-                                break
-
-                            if not os.path.exists(input_path) or input_path in retry_processed_files:
-                                continue
-
-                            original_filename = os.path.basename(input_path)
-                            log_message(f" → Retrying {original_filename}...", "info")
-
-                            try:
-                                assigned_api_key = api_keys[current_api_key_index % len(api_keys)]
-                                current_api_key_index = (current_api_key_index + 1) % len(api_keys)
-
-                                future = retry_executor.submit(
-                                    process_single_file,
-                                    input_path,
-                                    output_dir,
-                                    [assigned_api_key],
-                                    ghostscript_path,
-                                    rename_enabled,
-                                    auto_kategori_enabled,
-                                    auto_foldering_enabled,
-                                    provider_name,
-                                    selected_model,
-                                    embedding_enabled,
-                                    keyword_count,
-                                    priority,
-                                    stop_event,
-                                )
-                                batch_retry_futures.append((future, input_path))
-                                retry_processed_files.add(input_path)
-                            except Exception as e:
-                                log_message(f"Error submitting retry job for {original_filename}: {e}", "error")
-                                retry_failed += 1
-                                current_retry_failed_files.append(input_path)
-
-                        if not batch_retry_futures:
-                            retry_batch_index += effective_num_workers
-                            continue
-
-                        log_message(
-                            f"Retry Batch {retry_batch_index // effective_num_workers + 1}: Waiting for {len(batch_retry_futures)} file...",
-                            "warning",
+                    # Sliding window for retries
+                    while retry_pending and not should_stop():
+                        done_set, _ = concurrent.futures.wait(
+                            retry_pending, timeout=0.5, return_when=concurrent.futures.FIRST_COMPLETED
                         )
-
-                        for future, input_path in batch_retry_futures:
-                            if should_stop():
-                                for remaining_future, _ in batch_retry_futures:
-                                    if not remaining_future.done():
-                                        remaining_future.cancel()
-                                log_message("Retry processing stopped while waiting for batch results.", "warning")
-                                break
-
+                        if should_stop():
+                            log_message("Retry processing stopped while waiting for results.", "warning")
+                            break
+                        for done_future in done_set:
+                            retry_pending.discard(done_future)
+                            input_path = retry_future_to_path.get(done_future, "")
+                            filename = os.path.basename(input_path) if input_path else "unknown"
                             try:
-                                result = future.result(timeout=120)
-                                filename = os.path.basename(input_path)
-
+                                result = done_future.result(timeout=120)
                                 if not result:
                                     retry_failed += 1
                                     current_retry_failed_files.append(input_path)
                                     log_message(f"⨯ RETRY: Invalid result for {filename}", "error")
-                                    continue
-
-                                status = result.get("status", "failed")
-
-                                if status in [
-                                    "processed_exif",
-                                    "processed_no_exif",
-                                    "processed_exif_failed",
-                                    "processed_unknown_exif_status",
-                                ]:
-                                    retry_processed += 1
-                                    processed_count += 1
-                                    failed_count -= 1
-                                    failed_files = [
-                                        (fp, st, att)
-                                        for fp, st, att in failed_files
-                                        if fp != input_path
-                                    ]
-                                    new_name = result.get("new_filename")
-                                    log_msg = f"✓ RETRY SUCCESS: {filename}" + (
-                                        f" → {new_name}" if new_name else ""
-                                    )
-                                    log_message(log_msg)
-                                elif status == "stopped":
-                                    retry_stopped += 1
-                                    log_message(f"⊘ RETRY STOPPED: {filename}")
-                                    break
                                 else:
-                                    retry_failed += 1
-                                    updated_failed_files = []
-                                    new_attempt = 1
-                                    for fp, st, att in failed_files:
-                                        if fp == input_path:
-                                            new_attempt = att + 1
-                                            updated_failed_files.append((fp, status, new_attempt))
-                                        else:
-                                            updated_failed_files.append((fp, st, att))
-                                    failed_files = updated_failed_files
-
-                                    if is_retryable(status, new_attempt):
-                                        current_retry_failed_files.append(input_path)
-
-                                    log_message(f"✗ RETRY FAILED: {filename} ({status})")
+                                    status = result.get("status", "failed")
+                                    if status in ("processed_exif", "processed_no_exif",
+                                                  "processed_exif_failed", "processed_unknown_exif_status"):
+                                        retry_processed += 1
+                                        processed_count += 1
+                                        failed_count -= 1
+                                        failed_files = [(fp, st, att) for fp, st, att in failed_files if fp != input_path]
+                                        new_name = result.get("new_filename")
+                                        log_msg = f"✓ RETRY SUCCESS: {filename}" + (f" → {new_name}" if new_name else "")
+                                        log_message(log_msg)
+                                    elif status == "stopped":
+                                        retry_stopped += 1
+                                        log_message(f"⊘ RETRY STOPPED: {filename}")
+                                    else:
+                                        retry_failed += 1
+                                        updated_failed_files = []
+                                        new_attempt = 1
+                                        for fp, st, att in failed_files:
+                                            if fp == input_path:
+                                                new_attempt = att + 1
+                                                updated_failed_files.append((fp, status, new_attempt))
+                                            else:
+                                                updated_failed_files.append((fp, st, att))
+                                        failed_files = updated_failed_files
+                                        if is_retryable(status, new_attempt):
+                                            current_retry_failed_files.append(input_path)
+                                        log_message(f"✗ RETRY FAILED: {filename} ({status})")
                             except concurrent.futures.TimeoutError:
                                 retry_failed += 1
                                 current_retry_failed_files.append(input_path)
-                                log_message(
-                                    f"⨯ RETRY TIMEOUT: {os.path.basename(input_path)}",
-                                    "error",
-                                )
+                                log_message(f"⨯ RETRY TIMEOUT: {filename}", "error")
                             except concurrent.futures.CancelledError:
-                                log_message(
-                                    f"Retry job cancelled for {os.path.basename(input_path)}",
-                                    "warning",
-                                )
+                                log_message(f"Retry job cancelled for {filename}", "warning")
                                 retry_stopped += 1
                             except Exception as e:
                                 retry_failed += 1
                                 current_retry_failed_files.append(input_path)
-                                log_message(
-                                    f"✗ RETRY ERROR: {os.path.basename(input_path)} - {e}"
-                                )
+                                log_message(f"✗ RETRY ERROR: {filename} - {e}")
+                            # Submit next file immediately
+                            if not should_stop():
+                                _submit_retry_file(retry_executor)
 
-                        if should_stop():
-                            log_message("Stop detected after processing retry batch results.", "warning")
-                            break
-
-                        retry_batch_index += effective_num_workers
+                    if should_stop():
+                        for f in list(retry_pending):
+                            if not f.done():
+                                f.cancel()
+                        log_message("Retry processing stopped and remaining tasks cancelled.", "warning")
 
                 retry_files = []
                 for file_path in current_retry_failed_files:
