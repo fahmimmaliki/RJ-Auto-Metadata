@@ -31,19 +31,26 @@ if ! command -v python3 &>/dev/null; then
     exit 1
 fi
 
-if ! python3 -c "import customtkinter" &>/dev/null; then
-    echo "⚠️ Dependencies not installed or incomplete."
-    echo "🔄 Installing dependencies..."
+# Check/create virtual environment
+if [[ -d "venv" ]]; then
+    echo "📦 Virtual environment detected, activating..."
+    source venv/bin/activate
+elif python3 -c "import venv" &>/dev/null; then
+    echo "📦 Creating virtual environment..."
+    python3 -m venv venv
+    source venv/bin/activate
+    echo "🔄 Installing dependencies in venv..."
     pip3 install -r requirements.txt || {
+        echo "❌ Failed to install dependencies."
+        exit 1
+    }
+else
+    echo "⚠️ venv module not available, trying pip --break-system-packages..."
+    pip3 install --break-system-packages -r requirements.txt || {
         echo "❌ Failed to install dependencies."
         echo "   Please run the full setup script: ./setup_linux.sh"
         exit 1
     }
-fi
-
-if [[ -d "venv" ]]; then
-    echo "📦 Virtual environment detected, activating..."
-    source venv/bin/activate
 fi
 
 echo "🔍 Quick system check..."
